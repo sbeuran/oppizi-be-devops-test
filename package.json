@@ -1,14 +1,13 @@
 {
   "name": "task-management-api",
   "version": "1.0.0",
-  "description": "",
+  "description": "Task Management API",
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",
     "dev": "nodemon src/server.ts",
-    "build": "rm -rf dist && tsc",
+    "build": "tsc",
     "test": "jest --detectOpenHandles --forceExit",
-    "test:watch": "jest --watch",
     "typeorm": "typeorm-ts-node-commonjs"
   },
   "keywords": [],

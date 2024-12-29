@@ -1,14 +1,16 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import { CategoryService } from '../services/CategoryService';
+import { Category } from '../entities/Category';
+import { CreateCategoryDto } from '../types/category.dto';
+import { AppDataSource } from '../config/database';
 import { validate } from 'class-validator';
-import { CreateCategoryDto, UpdateCategoryDto } from '../types/category.dto';
 import { plainToInstance } from 'class-transformer';
 
 export class CategoryController {
   private categoryService: CategoryService;
 
   constructor() {
-    this.categoryService = new CategoryService();
+    this.categoryService = new CategoryService(AppDataSource.getRepository(Category));
   }
 
   createCategory = async (req: Request, res: Response, next: NextFunction) => {

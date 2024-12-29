@@ -9,9 +9,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./task-management-api
     
     services:
       postgres:
@@ -37,9 +34,11 @@ jobs:
           node-version: '18'
           
       - name: Install dependencies
+        working-directory: ./task-management-api
         run: npm ci
         
       - name: Run tests
+        working-directory: ./task-management-api
         run: npm test
         env:
           NODE_ENV: test
@@ -53,9 +52,6 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    defaults:
-      run:
-        working-directory: ./task-management-api
     steps:
       - uses: actions/checkout@v3
       
@@ -67,6 +63,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
           
       - name: Deploy to AWS
+        working-directory: ./task-management-api
         run: |
           aws cloudformation deploy \
             --template-file .github/aws/cloudformation.yml \

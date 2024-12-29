@@ -1,6 +1,6 @@
 import { Repository } from 'typeorm';
 import { Task } from '../entities/Task';
-import { CreateTaskDto, UpdateTaskDto, TaskFilters } from '../types/task.dto';
+import { CreateTaskDto, UpdateTaskDto, TaskFilterDto } from '../types/task.dto';
 
 export class TaskService {
   constructor(private taskRepository: Repository<Task>) {}
@@ -10,7 +10,7 @@ export class TaskService {
     return await this.taskRepository.save(task);
   }
 
-  async getAllTasks(filters: TaskFilters): Promise<{ tasks: Task[]; total: number; page: number; limit: number }> {
+  async getAllTasks(filters: TaskFilterDto): Promise<{ tasks: Task[]; total: number; page: number; limit: number }> {
     const { status, search, page = 1, limit = 10, sortBy, sortOrder } = filters;
     const skip = (page - 1) * limit;
 
