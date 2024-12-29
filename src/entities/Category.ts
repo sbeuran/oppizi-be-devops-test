@@ -10,7 +10,7 @@ export class Category {
   name: string;
 
   @Column({ nullable: true })
-  description: string;
+  description?: string;
 
   @OneToMany(() => Task, task => task.category)
   tasks: Task[];

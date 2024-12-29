@@ -1,15 +1,10 @@
 import { Repository } from 'typeorm';
 import { Category } from '../entities/Category';
-import { AppDataSource } from '../config/database';
 import { CreateCategoryDto, UpdateCategoryDto } from '../types/category.dto';
 import { NotFoundException, BadRequestException } from '../utils/errors';
 
 export class CategoryService {
-  private categoryRepository: Repository<Category>;
-
-  constructor() {
-    this.categoryRepository = AppDataSource.getRepository(Category);
-  }
+  constructor(private categoryRepository: Repository<Category>) {}
 
   async createCategory(createCategoryDto: CreateCategoryDto): Promise<Category> {
     const existingCategory = await this.categoryRepository.findOne({
@@ -42,6 +37,9 @@ export class CategoryService {
 
   async updateCategory(id: string, updateCategoryDto: UpdateCategoryDto): Promise<Category> {
     const category = await this.getCategoryById(id);
+    if (!category) {
+      throw new NotFoundException(`Category with ID ${id} not found`);
+    }
     Object.assign(category, updateCategoryDto);
     return await this.categoryRepository.save(category);
   }
