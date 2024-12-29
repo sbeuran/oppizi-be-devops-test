@@ -77,7 +77,7 @@ jobs:
           # Create new stack
           aws cloudformation create-stack \
             --stack-name $STACK_NAME \
-            --template-body "file://$GITHUB_WORKSPACE/task-management-api/.github/aws/cloudformation.yml" \
+            --template-body "file://$(pwd)/task-management-api/.github/aws/cloudformation.yml" \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameters \
               ParameterKey=DBPassword,ParameterValue=${{ secrets.DB_PASSWORD }} \
