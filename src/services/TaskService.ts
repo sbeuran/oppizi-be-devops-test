@@ -1,63 +1,63 @@
-import { Repository, Like } from 'typeorm';
-import { Task, TaskStatus } from '../entities/Task';
-import { AppDataSource } from '../config/database';
-import { CreateTaskDto, UpdateTaskDto, TaskFilterDto, SortOrder } from '../types/task.dto';
-import { NotFoundException } from '../utils/errors';
+import { Repository } from 'typeorm';
+import { Task } from '../entities/Task';
+import { CreateTaskDto, UpdateTaskDto, TaskFilters } from '../types/task.dto';
 
 export class TaskService {
-  private taskRepository: Repository<Task>;
-
-  constructor() {
-    this.taskRepository = AppDataSource.getRepository(Task);
-  }
+  constructor(private taskRepository: Repository<Task>) {}
 
   async createTask(createTaskDto: CreateTaskDto): Promise<Task> {
     const task = this.taskRepository.create(createTaskDto);
     return await this.taskRepository.save(task);
   }
 
-  async getAllTasks(filterDto: TaskFilterDto): Promise<{ tasks: Task[]; total: number }> {
-    const { search, status, page = 1, limit = 10, sortBy = 'createdAt', sortOrder = SortOrder.DESC } = filterDto;
-    const queryBuilder = this.taskRepository.createQueryBuilder('task');
+  async getAllTasks(filters: TaskFilters): Promise<{ tasks: Task[]; total: number; page: number; limit: number }> {
+    const { status, search, page = 1, limit = 10, sortBy, sortOrder } = filters;
+    const skip = (page - 1) * limit;
 
-    if (search) {
-      queryBuilder.andWhere(
-        '(task.title LIKE :search OR task.description LIKE :search)',
-        { search: `%${search}%` }
-      );
-    }
+    const queryBuilder = this.taskRepository.createQueryBuilder('task');
 
     if (status) {
       queryBuilder.andWhere('task.status = :status', { status });
     }
 
-    queryBuilder.orderBy(`task.${sortBy}`, sortOrder);
-
-    const skip = (page - 1) * limit;
-    queryBuilder.skip(skip).take(limit);
-
-    const [tasks, total] = await queryBuilder.getManyAndCount();
-    return { tasks, total };
-  }
-
-  async getTaskById(id: string): Promise<Task> {
-    const task = await this.taskRepository.findOne({ where: { id } });
-    if (!task) {
-      throw new NotFoundException(`Task with ID ${id} not found`);
+    if (search) {
+      queryBuilder.andWhere(
+        '(task.title ILIKE :search OR task.description ILIKE :search)',
+        { search: `%${search}%` }
+      );
     }
-    return task;
+
+    if (sortBy) {
+      queryBuilder.orderBy(`task.${sortBy}`, sortOrder);
+    }
+
+    const [tasks, total] = await queryBuilder
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      tasks,
+      total,
+      page: Number(page),
+      limit: Number(limit)
+    };
   }
 
-  async updateTask(id: string, updateTaskDto: UpdateTaskDto): Promise<Task> {
+  async getTaskById(id: string): Promise<Task | null> {
+    return await this.taskRepository.findOne({ where: { id } });
+  }
+
+  async updateTask(id: string, updateTaskDto: UpdateTaskDto): Promise<Task | null> {
     const task = await this.getTaskById(id);
+    if (!task) return null;
+
     Object.assign(task, updateTaskDto);
     return await this.taskRepository.save(task);
   }
 
-  async deleteTask(id: string): Promise<void> {
+  async deleteTask(id: string): Promise<boolean> {
     const result = await this.taskRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(`Task with ID ${id} not found`);
-    }
+    return result.affected ? result.affected > 0 : false;
   }
 } 
