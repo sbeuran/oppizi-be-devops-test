@@ -31,7 +31,7 @@ export class TaskController {
 
   getAllTasks = async (req: Request, res: Response): Promise<Response> => {
     try {
-      const filterDto = plainToInstance(TaskFilterDto, req.query);
+      const filterDto = plainToInstance(TaskFilterDto, req.query as Record<string, unknown>);
       const errors = await validate(filterDto);
       
       if (errors.length > 0) {

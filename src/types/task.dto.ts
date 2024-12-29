@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsInt, Min, IsIn } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsInt, Min } from 'class-validator';
 import { TaskStatus } from '../entities/Task';
 
 export class CreateTaskDto {
