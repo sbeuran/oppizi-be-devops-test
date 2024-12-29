@@ -11,7 +11,7 @@ env:
   ECR_REPOSITORY: task-api
   ECS_CLUSTER: task-api-stack-cluster
   ECS_SERVICE: task-api-stack-service
-  CONTAINER_NAME: task-api
+  STACK_NAME: task-api-stack
 
 jobs:
   test:
@@ -55,7 +55,7 @@ jobs:
         DB_PASSWORD: postgres
         DB_NAME: task_management
 
-  build-and-deploy:
+  deploy:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -70,11 +70,40 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
 
+    - name: Deploy CloudFormation stack
+      run: |
+        # Check if stack exists
+        if ! aws cloudformation describe-stacks --stack-name $STACK_NAME 2>/dev/null; then
+          # Create new stack
+          aws cloudformation create-stack \
+            --stack-name $STACK_NAME \
+            --template-body file://.github/aws/cloudformation.yml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameters \
+              ParameterKey=Environment,ParameterValue=production \
+              ParameterKey=DBPassword,ParameterValue=${{ secrets.DB_PASSWORD }}
+          
+          # Wait for stack creation
+          aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
+        else
+          # Update existing stack
+          aws cloudformation update-stack \
+            --stack-name $STACK_NAME \
+            --template-body file://.github/aws/cloudformation.yml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameters \
+              ParameterKey=Environment,ParameterValue=production \
+              ParameterKey=DBPassword,ParameterValue=${{ secrets.DB_PASSWORD }}
+          
+          # Wait for stack update
+          aws cloudformation wait stack-update-complete --stack-name $STACK_NAME
+        fi
+
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
-    - name: Build, tag, and push image to Amazon ECR
+    - name: Build and push image to ECR
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
@@ -84,9 +113,17 @@ jobs:
         docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-    - name: Update ECS service
+    - name: Force new deployment
       run: |
         aws ecs update-service \
           --cluster $ECS_CLUSTER \
           --service $ECS_SERVICE \
-          --force-new-deployment 
+          --force-new-deployment
+
+    - name: Get API endpoint
+      run: |
+        ENDPOINT=$(aws cloudformation describe-stacks \
+          --stack-name $STACK_NAME \
+          --query 'Stacks[0].Outputs[?OutputKey==`ApiEndpoint`].OutputValue' \
+          --output text)
+        echo "API is accessible at: $ENDPOINT" 
