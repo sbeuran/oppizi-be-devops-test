@@ -1,13 +1,22 @@
-import { AppDataSource } from '../config/database';
-import dotenv from 'dotenv';
+import { DataSource } from 'typeorm';
+import { Task } from '../entities/Task';
+import { Category } from '../entities/Category';
 
-dotenv.config();
+const testDataSource = new DataSource({
+  type: 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  username: process.env.DB_USERNAME || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres',
+  database: process.env.DB_NAME || 'task_management',
+  entities: [Task, Category],
+  synchronize: true,
+  dropSchema: true
+});
 
 beforeAll(async () => {
   try {
-    if (!AppDataSource.isInitialized) {
-      await AppDataSource.initialize();
-    }
+    await testDataSource.initialize();
   } catch (error) {
     console.error('Error during test setup:', error);
     throw error;
@@ -15,45 +24,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  try {
-    if (AppDataSource.isInitialized) {
-      await AppDataSource.destroy();
-    }
-  } catch (error) {
-    console.error('Error during test cleanup:', error);
-    throw error;
+  if (testDataSource.isInitialized) {
+    await testDataSource.destroy();
   }
 });
 
-beforeEach(async () => {
-  if (AppDataSource.isInitialized) {
-    try {
-      const queryRunner = AppDataSource.createQueryRunner();
-      await queryRunner.connect();
-      await queryRunner.startTransaction();
-      try {
-        // Disable foreign key checks
-        await queryRunner.query('SET CONSTRAINTS ALL DEFERRED');
-        
-        // Clear tables in correct order
-        await queryRunner.query('TRUNCATE TABLE tasks CASCADE');
-        await queryRunner.query('TRUNCATE TABLE categories CASCADE');
-        
-        // Re-enable foreign key checks
-        await queryRunner.query('SET CONSTRAINTS ALL IMMEDIATE');
-        
-        await queryRunner.commitTransaction();
-      } catch (err) {
-        await queryRunner.rollbackTransaction();
-        throw err;
-      } finally {
-        await queryRunner.release();
-      }
-    } catch (error) {
-      console.error('Error clearing test data:', error);
-      throw error;
-    }
-  }
-});
-
-jest.setTimeout(30000); // 30 seconds 
+export { testDataSource }; 

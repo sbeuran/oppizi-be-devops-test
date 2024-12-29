@@ -7,7 +7,7 @@
     "start": "node dist/server.js",
     "dev": "nodemon src/server.ts",
     "build": "rm -rf dist && tsc",
-    "test": "jest",
+    "test": "jest --detectOpenHandles --forceExit",
     "test:watch": "jest --watch",
     "typeorm": "typeorm-ts-node-commonjs"
   },
