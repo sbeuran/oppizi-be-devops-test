@@ -48,9 +48,12 @@ export class TaskController {
   getTaskById = async (req: Request, res: Response) => {
     try {
       const task = await this.taskService.getTaskById(req.params.id);
+      if (!task) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
       res.json(task);
     } catch (error) {
-      next(error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   };
 
@@ -60,22 +63,28 @@ export class TaskController {
       const errors = await validate(updateTaskDto);
       
       if (errors.length > 0) {
-        return next(errors);
+        return res.status(400).json({ errors });
       }
 
       const task = await this.taskService.updateTask(req.params.id, updateTaskDto);
+      if (!task) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
       res.json(task);
     } catch (error) {
-      next(error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   };
 
   deleteTask = async (req: Request, res: Response) => {
     try {
-      await this.taskService.deleteTask(req.params.id);
+      const result = await this.taskService.deleteTask(req.params.id);
+      if (!result) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
       res.status(204).send();
     } catch (error) {
-      next(error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   };
 } 

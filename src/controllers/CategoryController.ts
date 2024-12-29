@@ -13,19 +13,19 @@ export class CategoryController {
     this.categoryService = new CategoryService(AppDataSource.getRepository(Category));
   }
 
-  createCategory = async (req: Request, res: Response, next: NextFunction) => {
+  createCategory = async (req: Request, res: Response) => {
     try {
       const createCategoryDto = plainToInstance(CreateCategoryDto, req.body);
       const errors = await validate(createCategoryDto);
       
       if (errors.length > 0) {
-        return next(errors);
+        return res.status(400).json({ errors });
       }
 
       const category = await this.categoryService.createCategory(createCategoryDto);
       res.status(201).json(category);
     } catch (error) {
-      next(error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   };
 
