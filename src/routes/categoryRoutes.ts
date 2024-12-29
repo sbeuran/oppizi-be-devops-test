@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { TaskController } from '../controllers/TaskController';
+import { CategoryController } from '../controllers/CategoryController';
 
 const router = Router();
-const taskController = new TaskController();
+const categoryController = new CategoryController();
 
 router.post('/', async (req, res, next) => {
   try {
-    await taskController.createTask(req, res);
+    await categoryController.createCategory(req, res);
   } catch (error) {
     next(error);
   }
@@ -14,7 +14,7 @@ router.post('/', async (req, res, next) => {
 
 router.get('/', async (req, res, next) => {
   try {
-    await taskController.getAllTasks(req, res);
+    await categoryController.getAllCategories(req, res);
   } catch (error) {
     next(error);
   }
@@ -22,7 +22,7 @@ router.get('/', async (req, res, next) => {
 
 router.get('/:id', async (req, res, next) => {
   try {
-    await taskController.getTaskById(req, res);
+    await categoryController.getCategoryById(req, res);
   } catch (error) {
     next(error);
   }
@@ -30,7 +30,7 @@ router.get('/:id', async (req, res, next) => {
 
 router.put('/:id', async (req, res, next) => {
   try {
-    await taskController.updateTask(req, res);
+    await categoryController.updateCategory(req, res);
   } catch (error) {
     next(error);
   }
@@ -38,7 +38,7 @@ router.put('/:id', async (req, res, next) => {
 
 router.delete('/:id', async (req, res, next) => {
   try {
-    await taskController.deleteTask(req, res);
+    await categoryController.deleteCategory(req, res);
   } catch (error) {
     next(error);
   }

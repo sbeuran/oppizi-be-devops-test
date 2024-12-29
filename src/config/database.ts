@@ -14,5 +14,5 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME || 'task_management',
   entities: [Task, Category],
   synchronize: process.env.NODE_ENV !== 'production',
-  logging: process.env.NODE_ENV === 'development'
+  logging: process.env.NODE_ENV !== 'production'
 }); 

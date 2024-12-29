@@ -9,8 +9,8 @@ import { plainToInstance } from 'class-transformer';
 export class TaskController {
   private taskService: TaskService;
 
-  constructor() {
-    this.taskService = new TaskService(AppDataSource.getRepository(Task));
+  constructor(dataSource = AppDataSource) {
+    this.taskService = new TaskService(dataSource.getRepository(Task));
   }
 
   createTask = async (req: Request, res: Response): Promise<Response> => {

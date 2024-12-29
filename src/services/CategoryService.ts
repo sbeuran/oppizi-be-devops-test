@@ -44,10 +44,8 @@ export class CategoryService {
     return await this.categoryRepository.save(category);
   }
 
-  async deleteCategory(id: string): Promise<void> {
+  async deleteCategory(id: string): Promise<boolean> {
     const result = await this.categoryRepository.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(`Category with ID ${id} not found`);
-    }
+    return result.affected ? result.affected > 0 : false;
   }
 } 
