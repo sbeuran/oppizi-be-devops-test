@@ -1,8 +1,6 @@
 import request from 'supertest';
 import app from '../app';
-import { AppDataSource } from '../config/database';
 import { Task, TaskStatus } from '../entities/Task';
-import { Category } from '../entities/Category';
 import { SortOrder } from '../types/task.dto';
 import { testDataSource } from './setup';
 
@@ -10,7 +8,7 @@ describe('Task API', () => {
   const taskRepository = testDataSource.getRepository(Task);
 
   beforeEach(async () => {
-    await taskRepository.clear(); // Clear tasks before each test
+    await taskRepository.clear();
   });
 
   describe('POST /api/tasks', () => {

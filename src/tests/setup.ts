@@ -22,7 +22,6 @@ const testDataSource = new DataSource({
 beforeAll(async () => {
   try {
     await testDataSource.initialize();
-    // Clear database
     await testDataSource.synchronize(true);
   } catch (error) {
     console.error('Error during test setup:', error);
