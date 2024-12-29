@@ -212,6 +212,16 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: TaskExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt LogGroup.Arn
 
   # ECS Task Role
   ECSTaskRole:
@@ -231,6 +241,7 @@ Resources:
     DependsOn: 
       - ECSTaskExecutionRole
       - ECSTaskRole
+      - Database
     Properties:
       Family: !Sub ${AWS::StackName}-task
       RequiresCompatibilities:
@@ -262,12 +273,21 @@ Resources:
               Value: !Ref DBPassword
             - Name: DB_NAME
               Value: task_management
+          HealthCheck:
+            Command: 
+              - CMD-SHELL
+              - curl -f http://localhost:3000/api/tasks || exit 1
+            Interval: 60
+            Timeout: 30
+            Retries: 3
+            StartPeriod: 120
           LogConfiguration:
             LogDriver: awslogs
             Options:
               awslogs-group: !Ref LogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
+              awslogs-create-group: 'true'
 
   # CloudWatch Log Group
   LogGroup:
@@ -294,10 +314,13 @@ Resources:
       Protocol: HTTP
       VpcId: !Ref VPC
       HealthCheckPath: /api/tasks
-      HealthCheckIntervalSeconds: 30
-      HealthCheckTimeoutSeconds: 5
+      HealthCheckIntervalSeconds: 60
+      HealthCheckTimeoutSeconds: 30
       HealthyThresholdCount: 2
-      UnhealthyThresholdCount: 3
+      UnhealthyThresholdCount: 5
+      HealthCheckGracePeriodSeconds: 120
+      Matcher:
+        HttpCode: '200,404'
 
   Listener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -321,6 +344,7 @@ Resources:
       TaskDefinition: !Ref TaskDefinition
       DesiredCount: 1
       LaunchType: FARGATE
+      HealthCheckGracePeriodSeconds: 120
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED

@@ -4,40 +4,28 @@
 
 ## CI/CD Pipeline
 
-This project uses GitHub Actions for continuous integration and deployment. The pipeline consists of the following stages:
-
-### Test Stage
-- Runs on every push and pull request
-- Sets up Node.js and PostgreSQL
-- Installs dependencies
-- Runs unit tests
-
-### Build and Deploy Stage
-- Only runs on pushes to main branch
-- Builds Docker image
-- Pushes image to Amazon ECR
-- Updates ECS service with new image
+This project is automatically deployed to AWS using GitHub Actions. The pipeline:
+1. Runs tests on every push and PR
+2. On successful merge to main:
+   - Deploys infrastructure using CloudFormation
+   - Builds and pushes Docker image to ECR
+   - Updates ECS service
 
 ### Required Secrets
 
-The following secrets need to be configured in GitHub repository settings:
+Set these in GitHub repository settings (Settings > Secrets and variables > Actions):
+- `AWS_ACCESS_KEY_ID`: AWS access key
+- `AWS_SECRET_ACCESS_KEY`: AWS secret key
+- `DB_PASSWORD`: Database password
 
-- `AWS_ACCESS_KEY_ID`: AWS access key for deployment
-- `AWS_SECRET_ACCESS_KEY`: AWS secret key for deployment
+### Infrastructure
 
-### Setting up Secrets
-
-1. Go to your GitHub repository
-2. Navigate to Settings > Secrets and variables > Actions
-3. Click "New repository secret"
-4. Add the required secrets
-
-### Security Considerations
-
-- AWS credentials are stored as GitHub secrets
-- ECR repository requires authentication
-- All secrets are encrypted and only exposed during pipeline execution
-- Least privilege principle is followed for AWS IAM roles
+The application is deployed on AWS with:
+- ECS Fargate for container orchestration
+- RDS PostgreSQL for database
+- Application Load Balancer for traffic distribution
+- VPC with public and private subnets
+- ECR for container registry
 
 ## Local Development
 
@@ -48,9 +36,11 @@ The following secrets need to be configured in GitHub repository settings:
 
 2. Update the .env file with your credentials:
    ```
-   AWS_ACCESS_KEY_ID=your_access_key_here
-   AWS_SECRET_ACCESS_KEY=your_secret_key_here
-   AWS_REGION=eu-west-1
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_USERNAME=postgres
+   DB_PASSWORD=postgres
+   DB_NAME=task_management
    ```
 
 3. Install dependencies:
