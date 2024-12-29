@@ -13,7 +13,7 @@ export class CategoryController {
     this.categoryService = new CategoryService(AppDataSource.getRepository(Category));
   }
 
-  createCategory = async (req: Request, res: Response) => {
+  createCategory = async (req: Request, res: Response): Promise<Response> => {
     try {
       const createCategoryDto = plainToInstance(CreateCategoryDto, req.body);
       const errors = await validate(createCategoryDto);
@@ -23,9 +23,9 @@ export class CategoryController {
       }
 
       const category = await this.categoryService.createCategory(createCategoryDto);
-      res.status(201).json(category);
+      return res.status(201).json(category);
     } catch (error) {
-      res.status(500).json({ error: 'Internal server error' });
+      return res.status(500).json({ error: 'Internal server error' });
     }
   };
 

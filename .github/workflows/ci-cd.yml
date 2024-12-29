@@ -36,8 +36,8 @@ jobs:
       - name: Create task-management-api directory
         run: |
           mkdir -p task-management-api
-          cp -r ./* task-management-api/ || true
-          cp -r ./.* task-management-api/ || true
+          shopt -s dotglob
+          cp -r [!task-management-api]* task-management-api/
           rm -rf task-management-api/task-management-api || true
           
       - name: Install dependencies
