@@ -19,11 +19,9 @@ jobs:
           
       - name: Install dependencies
         run: npm ci
-        working-directory: ./task-management-api
         
       - name: Run tests
         run: npm test
-        working-directory: ./task-management-api
 
   deploy:
     needs: build
@@ -45,5 +43,4 @@ jobs:
             --template-file .github/aws/cloudformation.yml \
             --stack-name task-management-api \
             --parameter-overrides Environment=dev \
-            --capabilities CAPABILITY_IAM
-        working-directory: ./task-management-api 
+            --capabilities CAPABILITY_IAM 
