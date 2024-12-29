@@ -29,6 +29,15 @@ beforeAll(async () => {
   }
 });
 
+beforeEach(async () => {
+  try {
+    await testDataSource.synchronize(true); // Reset database before each test
+  } catch (error) {
+    console.error('Error resetting database:', error);
+    throw error;
+  }
+});
+
 afterAll(async () => {
   if (testDataSource.isInitialized) {
     await testDataSource.destroy();
