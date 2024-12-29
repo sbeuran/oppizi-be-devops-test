@@ -4,8 +4,15 @@ import { AppDataSource } from '../config/database';
 import { Task, TaskStatus } from '../entities/Task';
 import { Category } from '../entities/Category';
 import { SortOrder } from '../types/task.dto';
+import { testDataSource } from './setup';
 
 describe('Task API', () => {
+  const taskRepository = testDataSource.getRepository(Task);
+
+  beforeEach(async () => {
+    await taskRepository.clear(); // Clear tasks before each test
+  });
+
   describe('POST /api/tasks', () => {
     it('should create a new task', async () => {
       const response = await request(app)

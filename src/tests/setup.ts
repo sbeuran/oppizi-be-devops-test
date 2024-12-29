@@ -1,6 +1,10 @@
+import "reflect-metadata";
 import { DataSource } from 'typeorm';
 import { Task } from '../entities/Task';
 import { Category } from '../entities/Category';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const testDataSource = new DataSource({
   type: 'postgres',
@@ -11,12 +15,15 @@ const testDataSource = new DataSource({
   database: process.env.DB_NAME || 'task_management',
   entities: [Task, Category],
   synchronize: true,
-  dropSchema: true
+  dropSchema: true,
+  logging: false
 });
 
 beforeAll(async () => {
   try {
     await testDataSource.initialize();
+    // Clear database
+    await testDataSource.synchronize(true);
   } catch (error) {
     console.error('Error during test setup:', error);
     throw error;
