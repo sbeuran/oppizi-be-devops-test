@@ -1,3 +1,17 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Task Management API Infrastructure'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    Description: 'Environment name'
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Description: 'Database master password'
+    MinLength: 8
+
 TargetGroup:
   Type: AWS::ElasticLoadBalancingV2::TargetGroup
   Properties:

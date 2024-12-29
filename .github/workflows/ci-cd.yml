@@ -77,11 +77,11 @@ jobs:
           # Create new stack
           aws cloudformation create-stack \
             --stack-name $STACK_NAME \
-            --template-body file://.github/aws/cloudformation.yml \
+            --template-body "file://$GITHUB_WORKSPACE/task-management-api/.github/aws/cloudformation.yml" \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameters \
-              ParameterKey=Environment,ParameterValue=production \
-              ParameterKey=DBPassword,ParameterValue=${{ secrets.DB_PASSWORD }}
+              ParameterKey=DBPassword,ParameterValue=${{ secrets.DB_PASSWORD }} \
+              ParameterKey=Environment,ParameterValue=production
           
           # Wait for stack creation
           aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
@@ -89,11 +89,11 @@ jobs:
           # Update existing stack
           aws cloudformation update-stack \
             --stack-name $STACK_NAME \
-            --template-body file://.github/aws/cloudformation.yml \
+            --template-body "file://$GITHUB_WORKSPACE/task-management-api/.github/aws/cloudformation.yml" \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameters \
-              ParameterKey=Environment,ParameterValue=production \
-              ParameterKey=DBPassword,ParameterValue=${{ secrets.DB_PASSWORD }}
+              ParameterKey=DBPassword,ParameterValue=${{ secrets.DB_PASSWORD }} \
+              ParameterKey=Environment,ParameterValue=production
           
           # Wait for stack update
           aws cloudformation wait stack-update-complete --stack-name $STACK_NAME
