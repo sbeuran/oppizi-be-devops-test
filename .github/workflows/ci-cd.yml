@@ -33,6 +33,13 @@ jobs:
         with:
           node-version: '18'
           
+      - name: Create task-management-api directory
+        run: |
+          mkdir -p task-management-api
+          cp -r ./* task-management-api/ || true
+          cp -r ./.* task-management-api/ || true
+          rm -rf task-management-api/task-management-api || true
+          
       - name: Install dependencies
         working-directory: ./task-management-api
         run: npm ci
@@ -61,6 +68,13 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+          
+      - name: Create task-management-api directory
+        run: |
+          mkdir -p task-management-api
+          cp -r ./* task-management-api/ || true
+          cp -r ./.* task-management-api/ || true
+          rm -rf task-management-api/task-management-api || true
           
       - name: Deploy to AWS
         working-directory: ./task-management-api
