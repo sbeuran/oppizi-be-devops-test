@@ -12,17 +12,40 @@ Parameters:
     Description: 'Database master password'
     MinLength: 8
 
-TargetGroup:
-  Type: AWS::ElasticLoadBalancingV2::TargetGroup
-  Properties:
-    TargetType: ip
-    Port: 3000
-    Protocol: HTTP
-    VpcId: !Ref VPC
-    HealthCheckPath: /api/tasks
-    HealthCheckIntervalSeconds: 60
-    HealthCheckTimeoutSeconds: 30
-    HealthyThresholdCount: 2
-    UnhealthyThresholdCount: 5
-    Matcher:
-      HttpCode: '200,404'
+Resources:
+  # VPC Resources
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: TaskAPI-VPC
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      TargetType: ip
+      Port: 3000
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      HealthCheckPath: /api/tasks
+      HealthCheckIntervalSeconds: 60
+      HealthCheckTimeoutSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 5
+      Matcher:
+        HttpCode: '200,404'
+
+Outputs:
+  ApiEndpoint:
+    Description: API Endpoint URL
+    Value: !Sub http://${LoadBalancer.DNSName}
+  DatabaseEndpoint:
+    Description: RDS Endpoint
+    Value: !GetAtt Database.Endpoint.Address
+  ClusterName:
+    Description: ECS Cluster Name
+    Value: !Ref ECSCluster
