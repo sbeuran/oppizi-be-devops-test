@@ -1,51 +1,33 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Task Management API Infrastructure'
+Description: 'CloudFormation template for Task Management API'
 
 Parameters:
   Environment:
     Type: String
-    Default: production
-    Description: 'Environment name'
-  DBPassword:
-    Type: String
-    NoEcho: true
-    Description: 'Database master password'
-    MinLength: 8
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+    Description: Environment name
 
 Resources:
-  # VPC Resources
-  VPC:
-    Type: AWS::EC2::VPC
+  TaskManagementAPI:
+    Type: AWS::ECS::Service
     Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsHostnames: true
-      EnableDnsSupport: true
-      Tags:
-        - Key: Name
-          Value: TaskAPI-VPC
+      # Add your ECS service configuration here
+      ServiceName: !Sub task-management-api-${Environment}
+      # Other properties...
 
-  TargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
     Properties:
-      TargetType: ip
-      Port: 3000
-      Protocol: HTTP
-      VpcId: !Ref VPC
-      HealthCheckPath: /api/tasks
-      HealthCheckIntervalSeconds: 60
-      HealthCheckTimeoutSeconds: 30
-      HealthyThresholdCount: 2
-      UnhealthyThresholdCount: 5
-      Matcher:
-        HttpCode: '200,404'
+      # Add your task definition configuration here
+      Family: !Sub task-management-api-${Environment}
+      # Other properties...
+
+  # Add other resources as needed (VPC, Security Groups, etc.)
 
 Outputs:
-  ApiEndpoint:
+  APIEndpoint:
     Description: API Endpoint URL
-    Value: !Sub http://${LoadBalancer.DNSName}
-  DatabaseEndpoint:
-    Description: RDS Endpoint
-    Value: !GetAtt Database.Endpoint.Address
-  ClusterName:
-    Description: ECS Cluster Name
-    Value: !Ref ECSCluster
+    Value: !Sub https://${TaskManagementAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
