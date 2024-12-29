@@ -3,15 +3,8 @@ import app from '../app';
 import { Task, TaskStatus } from '../entities/Task';
 import { SortOrder } from '../types/task.dto';
 import { testDataSource } from './setup';
-import { TaskController } from '../controllers/TaskController';
 
 describe('Task API', () => {
-  let taskController: TaskController;
-
-  beforeAll(() => {
-    taskController = new TaskController(testDataSource);
-  });
-
   beforeEach(async () => {
     await testDataSource.getRepository(Task).clear();
   });
