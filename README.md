@@ -56,4 +56,4 @@ The application is deployed on AWS with:
 5. Start development server:
    ```bash
    npm run dev
-   ``` 
+   ``` # Last updated: Sun Dec 29 16:46:08 WET 2024
