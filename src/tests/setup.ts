@@ -21,7 +21,13 @@ export const testDataSource = new DataSource({
 
 beforeAll(async () => {
   try {
+    if (testDataSource.isInitialized) {
+      await testDataSource.destroy();
+    }
     await testDataSource.initialize();
+    await testDataSource.query('DROP SCHEMA public CASCADE');
+    await testDataSource.query('CREATE SCHEMA public');
+    await testDataSource.synchronize();
     console.log('Test database initialized');
   } catch (error) {
     console.error('Error initializing test database:', error);
@@ -31,7 +37,9 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   try {
-    await testDataSource.synchronize(true);
+    await testDataSource.query('DROP SCHEMA public CASCADE');
+    await testDataSource.query('CREATE SCHEMA public');
+    await testDataSource.synchronize();
     console.log('Database reset for new test');
   } catch (error) {
     console.error('Error resetting database:', error);
