@@ -29,6 +29,7 @@ jobs:
 
       - name: Deploy to AWS CloudFormation
         run: |
+          echo "Starting deployment..."
           aws cloudformation deploy \
             --template-file .github/aws/cloudformation.yml \
             --stack-name task-management-api \
@@ -39,6 +40,34 @@ jobs:
               DBName=${{ secrets.DB_NAME }} \
             --capabilities CAPABILITY_IAM \
             --no-fail-on-empty-changeset
+
+      - name: Check ECS Service Status
+        if: success()
+        run: |
+          echo "Checking ECS service status..."
+          CLUSTER_NAME="task-management-prod"
+          SERVICE_NAME="task-management-api-prod"
+          
+          aws ecs describe-services \
+            --cluster $CLUSTER_NAME \
+            --services $SERVICE_NAME \
+            --query 'services[0].events[0:5]' \
+            --output text
+            
+          # Get logs from the latest task
+          TASK_ID=$(aws ecs list-tasks \
+            --cluster $CLUSTER_NAME \
+            --service-name $SERVICE_NAME \
+            --query 'taskArns[0]' \
+            --output text)
+            
+          if [ "$TASK_ID" != "None" ]; then
+            echo "Latest task logs:"
+            aws logs get-log-events \
+              --log-group-name "/ecs/task-management-api-prod" \
+              --log-stream-name "api/$(basename $TASK_ID)" \
+              --limit 20
+          fi
 
       - name: Wait for stack creation
         run: |
