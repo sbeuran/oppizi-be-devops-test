@@ -14,7 +14,7 @@ export const testDataSource = new DataSource({
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_NAME || 'task_management_test',
   entities: [Task, Category],
-  synchronize: true,
+  synchronize: false,
   dropSchema: true,
   logging: false
 });
@@ -25,9 +25,10 @@ beforeAll(async () => {
       await testDataSource.destroy();
     }
     await testDataSource.initialize();
-    await testDataSource.query('DROP SCHEMA public CASCADE');
+    await testDataSource.query('DROP SCHEMA IF EXISTS public CASCADE');
     await testDataSource.query('CREATE SCHEMA public');
-    await testDataSource.synchronize();
+    await testDataSource.query('DROP TYPE IF EXISTS public.tasks_status_enum');
+    await testDataSource.synchronize(true);
     console.log('Test database initialized');
   } catch (error) {
     console.error('Error initializing test database:', error);
@@ -37,9 +38,10 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   try {
-    await testDataSource.query('DROP SCHEMA public CASCADE');
+    await testDataSource.query('DROP SCHEMA IF EXISTS public CASCADE');
     await testDataSource.query('CREATE SCHEMA public');
-    await testDataSource.synchronize();
+    await testDataSource.query('DROP TYPE IF EXISTS public.tasks_status_enum');
+    await testDataSource.synchronize(true);
     console.log('Database reset for new test');
   } catch (error) {
     console.error('Error resetting database:', error);
