@@ -18,20 +18,29 @@ export const createApp = (dataSource: DataSource): Application => {
   app.use(helmet());
   app.use(express.json());
 
-  // Health check endpoint with database check
+  // Health check endpoint with more detailed checks
   app.get('/health', async (_req: Request, res: Response) => {
     try {
-      // Check database connection
+      // Simple query to check database connection
       await dataSource.query('SELECT 1');
-      res.status(200).json({ 
+      
+      res.status(200).json({
         status: 'healthy',
-        database: 'connected',
+        checks: {
+          database: 'connected',
+          api: 'running'
+        },
         timestamp: new Date().toISOString()
       });
     } catch (error) {
-      res.status(503).json({ 
+      console.error('Health check failed:', error);
+      
+      res.status(503).json({
         status: 'unhealthy',
-        database: 'disconnected',
+        checks: {
+          database: error instanceof Error ? error.message : 'disconnected',
+          api: 'running'
+        },
         timestamp: new Date().toISOString()
       });
     }

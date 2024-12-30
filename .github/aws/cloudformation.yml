@@ -192,11 +192,13 @@ Resources:
             - Name: DB_NAME
               Value: !Ref DBName
           EntryPoint:
-            - sh
-            - -c
+            - "/bin/sh"
+            - "-c"
           Command:
             - |
-              apk add --no-cache curl
+              echo "Installing dependencies..." && \
+              apk add --no-cache curl && \
+              echo "Starting application..." && \
               node dist/server.js
           HealthCheck:
             Command: 
@@ -205,7 +207,7 @@ Resources:
             Interval: 30
             Timeout: 5
             Retries: 3
-            StartPeriod: 60
+            StartPeriod: 180
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -221,6 +223,7 @@ Resources:
       - Database
       - LoadBalancer
       - DatabaseSecurityGroup
+      - TaskDefinition
     Properties:
       ServiceName: !Sub task-management-api-${Environment}
       Cluster: !Ref TaskManagementCluster
@@ -242,7 +245,7 @@ Resources:
           AssignPublicIp: ENABLED
       DeploymentConfiguration:
         MaximumPercent: 200
-        MinimumHealthyPercent: 100
+        MinimumHealthyPercent: 0
         DeploymentCircuitBreaker:
           Enable: true
           Rollback: true
