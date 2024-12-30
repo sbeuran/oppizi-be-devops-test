@@ -126,6 +126,9 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub task-management-${Environment}-alb-sg
 
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -192,7 +195,9 @@ Resources:
   # Update ECS Service to use ALB
   TaskManagementAPI:
     Type: AWS::ECS::Service
-    DependsOn: Listener
+    DependsOn: 
+      - Listener
+      - Database  # Wait for RDS to be ready
     Properties:
       ServiceName: !Sub task-management-api-${Environment}
       Cluster: !Ref TaskManagementCluster
@@ -263,7 +268,10 @@ Resources:
         - IpProtocol: tcp
           FromPort: 3000
           ToPort: 3000
-          CidrIp: 0.0.0.0/0
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub task-management-${Environment}-container-sg
 
   # Add RDS Database
   DatabaseSecurityGroup:
