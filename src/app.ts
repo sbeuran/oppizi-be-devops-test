@@ -1,33 +1,44 @@
 import express from 'express';
-import { AppDataSource } from './config/database';
-import taskRoutes from './routes/taskRoutes';
-import categoryRoutes from './routes/categoryRoutes';
-import errorHandler from './middlewares/errorHandler';
+import cors from 'cors';
+import { DataSource } from 'typeorm';
+import { Task } from './entities/Task';
+import { Category } from './entities/Category';
+import { TaskController } from './controllers/TaskController';
+import { CategoryController } from './controllers/CategoryController';
+import { TaskService } from './services/TaskService';
+import { CategoryService } from './services/CategoryService';
+import { errorHandler } from './middlewares/errorHandler';
 
-const app = express();
+export const createApp = (dataSource: DataSource) => {
+  const app = express();
 
-app.use(express.json());
+  // Middleware
+  app.use(cors());
+  app.use(express.json());
 
-// Health check endpoint
-app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'healthy' });
-});
+  // Services
+  const taskService = new TaskService(dataSource.getRepository(Task));
+  const categoryService = new CategoryService(dataSource.getRepository(Category));
 
-// Routes
-app.use('/api/tasks', taskRoutes);
-app.use('/api/categories', categoryRoutes);
+  // Controllers
+  const taskController = new TaskController(taskService);
+  const categoryController = new CategoryController(categoryService);
 
-// Error handling
-app.use(errorHandler);
+  // Routes
+  app.post('/tasks', taskController.createTask);
+  app.get('/tasks', taskController.getTasks);
+  app.get('/tasks/:id', taskController.getTaskById);
+  app.patch('/tasks/:id', taskController.updateTask);
+  app.delete('/tasks/:id', taskController.deleteTask);
 
-// Initialize database connection
-AppDataSource.initialize()
-  .then(() => {
-    console.log('Database connection initialized');
-  })
-  .catch((err: Error) => {
-    console.error('Error during database initialization:', err);
-    process.exit(1);
-  });
+  app.post('/categories', categoryController.createCategory);
+  app.get('/categories', categoryController.getAllCategories);
+  app.get('/categories/:id', categoryController.getCategoryById);
+  app.patch('/categories/:id', categoryController.updateCategory);
+  app.delete('/categories/:id', categoryController.deleteCategory);
 
-export default app; 
+  // Error handling
+  app.use(errorHandler);
+
+  return app;
+}; 

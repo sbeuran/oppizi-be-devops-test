@@ -1,92 +1,89 @@
 import { Repository } from 'typeorm';
-import { Task, TaskStatus } from '../entities/Task';
-import { CreateTaskDto, UpdateTaskDto, TaskFilterDto } from '../types/task.dto';
+import { Task } from '../entities/Task';
+import { CreateTaskDTO, UpdateTaskDTO, TaskFilterDTO } from '../types/task.dto';
+import { AppError } from '../middlewares/errorHandler';
 
 export class TaskService {
   constructor(private taskRepository: Repository<Task>) {}
 
-  async createTask(createTaskDto: CreateTaskDto): Promise<Task> {
-    try {
-      const task = this.taskRepository.create({
-        title: createTaskDto.title,
-        description: createTaskDto.description,
-        status: createTaskDto.status || TaskStatus.PENDING
-      });
-      return await this.taskRepository.save(task);
-    } catch (error) {
-      console.error('Error creating task:', error);
-      throw error;
+  async createTask(createTaskDto: CreateTaskDTO): Promise<Task> {
+    if (!createTaskDto.title) {
+      throw new AppError(400, 'Title is required', 'VALIDATION_ERROR');
     }
+
+    const task = this.taskRepository.create(createTaskDto);
+    return await this.taskRepository.save(task);
   }
 
-  async getAllTasks(filters: TaskFilterDto): Promise<{ tasks: Task[]; total: number; page: number; limit: number }> {
-    try {
-      const { status, search, page = 1, limit = 10, sortBy, sortOrder } = filters;
-      const skip = (page - 1) * limit;
+  async getTasks(filterDto?: TaskFilterDTO): Promise<[Task[], number]> {
+    const query = this.taskRepository.createQueryBuilder('task')
+      .leftJoinAndSelect('task.category', 'category');
 
-      const queryBuilder = this.taskRepository.createQueryBuilder('task');
+    if (filterDto) {
+      const { status, priority, search, categoryId, page, limit, sortBy, sortOrder } = filterDto;
 
       if (status) {
-        queryBuilder.andWhere('task.status = :status', { status });
+        query.andWhere('task.status = :status', { status });
+      }
+
+      if (priority) {
+        query.andWhere('task.priority = :priority', { priority });
+      }
+
+      if (categoryId) {
+        query.andWhere('task.categoryId = :categoryId', { categoryId });
       }
 
       if (search) {
-        queryBuilder.andWhere(
+        query.andWhere(
           '(LOWER(task.title) LIKE LOWER(:search) OR LOWER(task.description) LIKE LOWER(:search))',
           { search: `%${search}%` }
         );
       }
 
       if (sortBy) {
-        queryBuilder.orderBy(`task.${sortBy}`, sortOrder);
+        query.orderBy(`task.${sortBy}`, sortOrder || 'ASC');
       }
 
-      const [tasks, total] = await queryBuilder
-        .skip(skip)
-        .take(limit)
-        .getManyAndCount();
-
-      return {
-        tasks,
-        total,
-        page: Number(page),
-        limit: Number(limit)
-      };
-    } catch (error) {
-      console.error('Error getting tasks:', error);
-      throw error;
+      if (page && limit) {
+        query.skip((page - 1) * limit).take(limit);
+      }
     }
+
+    return await query.getManyAndCount();
   }
 
   async getTaskById(id: string): Promise<Task | null> {
-    try {
-      return await this.taskRepository.findOne({ where: { id } });
-    } catch (error) {
-      console.error('Error getting task by id:', error);
-      throw error;
+    const task = await this.taskRepository.findOne({
+      where: { id },
+      relations: ['category']
+    });
+
+    if (!task) {
+      throw new AppError(404, 'Task not found', 'NOT_FOUND');
     }
+
+    return task;
   }
 
-  async updateTask(id: string, updateTaskDto: UpdateTaskDto): Promise<Task | null> {
-    try {
-      const task = await this.getTaskById(id);
-      if (!task) return null;
+  async updateTask(updateTaskDto: UpdateTaskDTO): Promise<Task> {
+    const task = await this.taskRepository.findOne({
+      where: { id: updateTaskDto.id }
+    });
 
-      Object.assign(task, updateTaskDto);
-      return await this.taskRepository.save(task);
-    } catch (error) {
-      console.error('Error updating task:', error);
-      throw error;
+    if (!task) {
+      throw new AppError(404, 'Task not found', 'NOT_FOUND');
     }
+
+    Object.assign(task, updateTaskDto);
+    return await this.taskRepository.save(task);
   }
 
   async deleteTask(id: string): Promise<boolean> {
-    try {
-      const result = await this.taskRepository.delete(id);
-      return result.affected ? result.affected > 0 : false;
-    } catch (error) {
-      console.error('Error deleting task:', error);
-      throw error;
+    const result = await this.taskRepository.delete(id);
+    if (result.affected === 0) {
+      throw new AppError(404, 'Task not found', 'NOT_FOUND');
     }
+    return true;
   }
 } 

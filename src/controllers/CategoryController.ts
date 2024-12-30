@@ -1,88 +1,74 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { CategoryService } from '../services/CategoryService';
-import { Category } from '../entities/Category';
-import { AppDataSource } from '../config/database';
-import { CreateCategoryDto, UpdateCategoryDto } from '../types/category.dto';
-import { validate } from 'class-validator';
-import { plainToInstance } from 'class-transformer';
+import { CreateCategoryDTO, UpdateCategoryDTO, CategoryFilterDTO } from '../types/category.dto';
+import { AppError } from '../middlewares/errorHandler';
 
 export class CategoryController {
-  private readonly categoryService: CategoryService;
-
-  constructor(dataSource = AppDataSource) {
-    this.categoryService = new CategoryService(dataSource.getRepository(Category));
+  constructor(private categoryService: CategoryService) {
+    // Bind methods to ensure correct 'this' context
+    this.createCategory = this.createCategory.bind(this);
+    this.getAllCategories = this.getAllCategories.bind(this);
+    this.getCategoryById = this.getCategoryById.bind(this);
+    this.updateCategory = this.updateCategory.bind(this);
+    this.deleteCategory = this.deleteCategory.bind(this);
   }
 
-  public createCategory = async (req: Request, res: Response): Promise<Response> => {
+  async createCategory(req: Request, res: Response, next: NextFunction) {
     try {
-      const createCategoryDto = plainToInstance(CreateCategoryDto, req.body);
-      const errors = await validate(createCategoryDto);
-      
-      if (errors.length > 0) {
-        return res.status(400).json({ errors });
+      const categoryData: CreateCategoryDTO = req.body;
+      if (!categoryData.name) {
+        throw new AppError(400, 'Name is required', 'VALIDATION_ERROR');
       }
-
-      const category = await this.categoryService.createCategory(createCategoryDto);
-      return res.status(201).json(category);
+      const category = await this.categoryService.createCategory(categoryData);
+      res.status(201).json(category);
     } catch (error) {
-      console.error('Error creating category:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      next(error);
     }
-  };
+  }
 
-  public getAllCategories = async (_req: Request, res: Response): Promise<Response> => {
+  async getAllCategories(req: Request, res: Response, next: NextFunction) {
     try {
-      const categories = await this.categoryService.getAllCategories();
-      return res.json(categories);
+      const filterDto: CategoryFilterDTO = req.query;
+      const [categories, total] = await this.categoryService.getAllCategories(filterDto);
+      res.json({
+        data: categories,
+        total,
+        page: Number(filterDto.page) || 1,
+        limit: Number(filterDto.limit) || 10
+      });
     } catch (error) {
-      console.error('Error getting categories:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      next(error);
     }
-  };
+  }
 
-  public getCategoryById = async (req: Request, res: Response): Promise<Response> => {
+  async getCategoryById(req: Request, res: Response, next: NextFunction) {
     try {
-      const category = await this.categoryService.getCategoryById(req.params.id);
-      if (!category) {
-        return res.status(404).json({ error: 'Category not found' });
-      }
-      return res.json(category);
+      const { id } = req.params;
+      const category = await this.categoryService.getCategoryById(id);
+      res.json(category);
     } catch (error) {
-      console.error('Error getting category:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      next(error);
     }
-  };
+  }
 
-  public updateCategory = async (req: Request, res: Response): Promise<Response> => {
+  async updateCategory(req: Request, res: Response, next: NextFunction) {
     try {
-      const updateCategoryDto = plainToInstance(UpdateCategoryDto, req.body);
-      const errors = await validate(updateCategoryDto);
-      
-      if (errors.length > 0) {
-        return res.status(400).json({ errors });
-      }
-
-      const category = await this.categoryService.updateCategory(req.params.id, updateCategoryDto);
-      if (!category) {
-        return res.status(404).json({ error: 'Category not found' });
-      }
-      return res.json(category);
+      const { id } = req.params;
+      const updateData: UpdateCategoryDTO = { ...req.body, id };
+      const category = await this.categoryService.updateCategory(id, updateData);
+      res.json(category);
     } catch (error) {
-      console.error('Error updating category:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      next(error);
     }
-  };
+  }
 
-  public deleteCategory = async (req: Request, res: Response): Promise<Response> => {
+  async deleteCategory(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await this.categoryService.deleteCategory(req.params.id);
-      if (!result) {
-        return res.status(404).json({ error: 'Category not found' });
-      }
-      return res.status(204).send();
+      const { id } = req.params;
+      await this.categoryService.deleteCategory(id);
+      res.status(204).send();
     } catch (error) {
-      console.error('Error deleting category:', error);
-      return res.status(500).json({ error: 'Internal server error' });
+      next(error);
     }
-  };
+  }
 } 

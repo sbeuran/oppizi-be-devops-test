@@ -1,20 +1,22 @@
-import { IsString, IsOptional } from 'class-validator';
-
-export class CreateCategoryDto {
-  @IsString()
+export interface CreateCategoryDTO {
   name: string;
-
-  @IsString()
-  @IsOptional()
   description?: string;
 }
 
-export class UpdateCategoryDto {
-  @IsString()
-  @IsOptional()
-  name?: string;
+export interface UpdateCategoryDTO extends Partial<CreateCategoryDTO> {
+  id: string;
+}
 
-  @IsString()
-  @IsOptional()
-  description?: string;
+export interface CategoryResponseDTO extends Required<CreateCategoryDTO> {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CategoryFilterDTO {
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: keyof CreateCategoryDTO;
+  sortOrder?: 'ASC' | 'DESC';
 } 

@@ -1,90 +1,74 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { TaskService } from '../services/TaskService';
-import { Task } from '../entities/Task';
-import { AppDataSource } from '../config/database';
-import { CreateTaskDto, UpdateTaskDto, TaskFilterDto } from '../types/task.dto';
-import { validate } from 'class-validator';
-import { plainToInstance } from 'class-transformer';
+import { CreateTaskDTO, UpdateTaskDTO, TaskFilterDTO } from '../types/task.dto';
+import { AppError } from '../middlewares/errorHandler';
 
 export class TaskController {
-  private taskService: TaskService;
-
-  constructor(dataSource = AppDataSource) {
-    this.taskService = new TaskService(dataSource.getRepository(Task));
+  constructor(private taskService: TaskService) {
+    // Bind methods to ensure correct 'this' context
+    this.createTask = this.createTask.bind(this);
+    this.getTasks = this.getTasks.bind(this);
+    this.getTaskById = this.getTaskById.bind(this);
+    this.updateTask = this.updateTask.bind(this);
+    this.deleteTask = this.deleteTask.bind(this);
   }
 
-  createTask = async (req: Request, res: Response): Promise<Response> => {
+  async createTask(req: Request, res: Response, next: NextFunction) {
     try {
-      const createTaskDto = plainToInstance(CreateTaskDto, req.body);
-      const errors = await validate(createTaskDto);
-      
-      if (errors.length > 0) {
-        return res.status(400).json({ errors });
+      const taskData: CreateTaskDTO = req.body;
+      if (!taskData.title) {
+        throw new AppError(400, 'Title is required', 'VALIDATION_ERROR');
       }
-
-      const task = await this.taskService.createTask(createTaskDto);
-      return res.status(201).json(task);
+      const task = await this.taskService.createTask(taskData);
+      res.status(201).json(task);
     } catch (error) {
-      return res.status(500).json({ error: 'Internal server error' });
+      next(error);
     }
-  };
+  }
 
-  getAllTasks = async (req: Request, res: Response): Promise<Response> => {
+  async getTasks(req: Request, res: Response, next: NextFunction) {
     try {
-      const filterDto = plainToInstance(TaskFilterDto, req.query as Record<string, unknown>);
-      const errors = await validate(filterDto);
-      
-      if (errors.length > 0) {
-        return res.status(400).json({ errors });
-      }
-
-      const result = await this.taskService.getAllTasks(filterDto);
-      return res.json(result);
+      const filterDto: TaskFilterDTO = req.query;
+      const [tasks, total] = await this.taskService.getTasks(filterDto);
+      res.json({
+        data: tasks,
+        total,
+        page: Number(filterDto.page) || 1,
+        limit: Number(filterDto.limit) || 10
+      });
     } catch (error) {
-      return res.status(500).json({ error: 'Internal server error' });
+      next(error);
     }
-  };
+  }
 
-  getTaskById = async (req: Request, res: Response): Promise<Response> => {
+  async getTaskById(req: Request, res: Response, next: NextFunction) {
     try {
-      const task = await this.taskService.getTaskById(req.params.id);
-      if (!task) {
-        return res.status(404).json({ error: 'Task not found' });
-      }
-      return res.json(task);
+      const { id } = req.params;
+      const task = await this.taskService.getTaskById(id);
+      res.json(task);
     } catch (error) {
-      return res.status(500).json({ error: 'Internal server error' });
+      next(error);
     }
-  };
+  }
 
-  updateTask = async (req: Request, res: Response): Promise<Response> => {
+  async updateTask(req: Request, res: Response, next: NextFunction) {
     try {
-      const updateTaskDto = plainToInstance(UpdateTaskDto, req.body);
-      const errors = await validate(updateTaskDto);
-      
-      if (errors.length > 0) {
-        return res.status(400).json({ errors });
-      }
-
-      const task = await this.taskService.updateTask(req.params.id, updateTaskDto);
-      if (!task) {
-        return res.status(404).json({ error: 'Task not found' });
-      }
-      return res.json(task);
+      const { id } = req.params;
+      const taskData: UpdateTaskDTO = { ...req.body, id };
+      const task = await this.taskService.updateTask(taskData);
+      res.json(task);
     } catch (error) {
-      return res.status(500).json({ error: 'Internal server error' });
+      next(error);
     }
-  };
+  }
 
-  deleteTask = async (req: Request, res: Response): Promise<Response> => {
+  async deleteTask(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await this.taskService.deleteTask(req.params.id);
-      if (!result) {
-        return res.status(404).json({ error: 'Task not found' });
-      }
-      return res.status(204).send();
+      const { id } = req.params;
+      await this.taskService.deleteTask(id);
+      res.status(204).send();
     } catch (error) {
-      return res.status(500).json({ error: 'Internal server error' });
+      next(error);
     }
-  };
+  }
 } 

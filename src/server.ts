@@ -1,5 +1,5 @@
 import { AppDataSource } from './config/database';
-import app from './app';
+import { createApp } from './app';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -9,6 +9,8 @@ const PORT = process.env.PORT || 3000;
 AppDataSource.initialize()
   .then(() => {
     console.log('Database connection established');
+    const app = createApp(AppDataSource);
+    
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
     });

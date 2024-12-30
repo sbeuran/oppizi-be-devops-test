@@ -1,47 +1,17 @@
 import { Router } from 'express';
 import { CategoryController } from '../controllers/CategoryController';
+import { CategoryService } from '../services/CategoryService';
+import { AppDataSource } from '../config/database';
+import { Category } from '../entities/Category';
 
 const router = Router();
-const categoryController = new CategoryController();
+const categoryService = new CategoryService(AppDataSource.getRepository(Category));
+const categoryController = new CategoryController(categoryService);
 
-router.post('/', async (req, res, next) => {
-  try {
-    await categoryController.createCategory(req, res);
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.get('/', async (req, res, next) => {
-  try {
-    await categoryController.getAllCategories(req, res);
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.get('/:id', async (req, res, next) => {
-  try {
-    await categoryController.getCategoryById(req, res);
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.put('/:id', async (req, res, next) => {
-  try {
-    await categoryController.updateCategory(req, res);
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.delete('/:id', async (req, res, next) => {
-  try {
-    await categoryController.deleteCategory(req, res);
-  } catch (error) {
-    next(error);
-  }
-});
+router.post('/', categoryController.createCategory);
+router.get('/', categoryController.getAllCategories);
+router.get('/:id', categoryController.getCategoryById);
+router.patch('/:id', categoryController.updateCategory);
+router.delete('/:id', categoryController.deleteCategory);
 
 export default router; 
