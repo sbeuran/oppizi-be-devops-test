@@ -19,17 +19,21 @@ export const testDataSource = new DataSource({
   logging: false
 });
 
+async function resetDatabase() {
+  await testDataSource.query('DROP SCHEMA IF EXISTS public CASCADE');
+  await testDataSource.query('CREATE SCHEMA public');
+  await testDataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public');
+  await testDataSource.query('DROP TYPE IF EXISTS public.tasks_status_enum CASCADE');
+  await testDataSource.synchronize(true);
+}
+
 beforeAll(async () => {
   try {
     if (testDataSource.isInitialized) {
       await testDataSource.destroy();
     }
     await testDataSource.initialize();
-    await testDataSource.query('DROP SCHEMA IF EXISTS public CASCADE');
-    await testDataSource.query('CREATE SCHEMA public');
-    await testDataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public');
-    await testDataSource.query('DROP TYPE IF EXISTS public.tasks_status_enum');
-    await testDataSource.synchronize(true);
+    await resetDatabase();
     console.log('Test database initialized');
   } catch (error) {
     console.error('Error initializing test database:', error);
@@ -39,11 +43,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   try {
-    await testDataSource.query('DROP SCHEMA IF EXISTS public CASCADE');
-    await testDataSource.query('CREATE SCHEMA public');
-    await testDataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public');
-    await testDataSource.query('DROP TYPE IF EXISTS public.tasks_status_enum');
-    await testDataSource.synchronize(true);
+    await resetDatabase();
     console.log('Database reset for new test');
   } catch (error) {
     console.error('Error resetting database:', error);
