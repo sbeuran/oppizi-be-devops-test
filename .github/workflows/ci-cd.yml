@@ -94,6 +94,21 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-1
 
+      - name: Check and delete stack if stuck
+        run: |
+          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name task-management-api --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "STACK_NOT_FOUND")
+          
+          if [ "$STACK_STATUS" = "CREATE_IN_PROGRESS" ]; then
+            echo "Stack is stuck in CREATE_IN_PROGRESS, deleting..."
+            aws cloudformation delete-stack --stack-name task-management-api
+            
+            echo "Waiting for stack deletion to complete..."
+            aws cloudformation wait stack-delete-complete --stack-name task-management-api
+            
+            # Additional wait to ensure complete cleanup
+            sleep 30
+          fi
+
       - name: Deploy CloudFormation Stack
         run: |
           aws cloudformation deploy \
@@ -101,8 +116,6 @@ jobs:
             --stack-name task-management-api \
             --parameter-overrides \
               Environment=prod \
-              DBHost=${{ secrets.DB_HOST }} \
-              DBPort=${{ secrets.DB_PORT }} \
               DBUsername=${{ secrets.DB_USERNAME }} \
               DBPassword=${{ secrets.DB_PASSWORD }} \
               DBName=${{ secrets.DB_NAME }} \
