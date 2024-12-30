@@ -72,7 +72,6 @@ jobs:
 
       - name: Deploy CloudFormation Stack
         run: |
-          # Deploy stack with increased timeout
           aws cloudformation deploy \
             --template-file .github/aws/cloudformation.yml \
             --stack-name task-management-api \
@@ -83,12 +82,11 @@ jobs:
               DBUsername=${{ secrets.DB_USERNAME }} \
               DBPassword=${{ secrets.DB_PASSWORD }} \
               DBName=${{ secrets.DB_NAME }} \
-            --capabilities CAPABILITY_IAM \
-            --timeout-in-minutes 60
+            --capabilities CAPABILITY_IAM
 
-          # Wait for stack with increased timeout
-          aws cloudformation wait stack-create-complete --stack-name task-management-api || \
-          aws cloudformation wait stack-update-complete --stack-name task-management-api
+          # Wait with timeout
+          timeout 3600 aws cloudformation wait stack-create-complete --stack-name task-management-api || \
+          timeout 3600 aws cloudformation wait stack-update-complete --stack-name task-management-api
 
       - name: Check Stack Status
         run: |
