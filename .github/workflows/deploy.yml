@@ -1,0 +1,49 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # ... previous steps ...
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+
+      - name: Check and Delete Failed Stack
+        run: |
+          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name task-management-api --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "STACK_NOT_FOUND")
+          if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ]; then
+            echo "Deleting failed stack..."
+            aws cloudformation delete-stack --stack-name task-management-api
+            echo "Waiting for stack deletion to complete..."
+            aws cloudformation wait stack-delete-complete --stack-name task-management-api
+          fi
+
+      - name: Deploy to AWS CloudFormation
+        run: |
+          aws cloudformation deploy \
+            --template-file .github/aws/cloudformation.yml \
+            --stack-name task-management-api \
+            --parameter-overrides \
+              Environment=prod \
+              DBUsername=${{ secrets.DB_USERNAME }} \
+              DBPassword=${{ secrets.DB_PASSWORD }} \
+              DBName=${{ secrets.DB_NAME }} \
+            --capabilities CAPABILITY_IAM \
+            --no-fail-on-empty-changeset
+
+      - name: Wait for stack creation
+        run: |
+          aws cloudformation wait stack-create-complete --stack-name task-management-api || {
+            echo "Stack creation failed. Fetching stack events..."
+            aws cloudformation describe-stack-events --stack-name task-management-api
+            exit 1
+          } 
