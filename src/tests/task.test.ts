@@ -1,4 +1,3 @@
-import { DataSource } from 'typeorm';
 import { Task } from '../entities/Task';
 import { TaskService } from '../services/TaskService';
 import { AppError } from '../middlewares/errorHandler';
@@ -7,11 +6,13 @@ import { testDataSource } from './setup';
 
 describe('TaskService', () => {
   let taskService: TaskService;
-  let dataSource: DataSource;
 
   beforeAll(async () => {
-    dataSource = testDataSource;
-    taskService = new TaskService(dataSource.getRepository(Task));
+    // Wait for database to be ready
+    if (!testDataSource.isInitialized) {
+      await testDataSource.initialize();
+    }
+    taskService = new TaskService(testDataSource.getRepository(Task));
   });
 
   it('should create a task', async () => {
@@ -23,6 +24,8 @@ describe('TaskService', () => {
     };
 
     const task = await taskService.createTask(taskData);
+    expect(task).toBeDefined();
+    expect(task.id).toBeDefined();
     expect(task.title).toBe(taskData.title);
     expect(task.description).toBe(taskData.description);
     expect(task.priority).toBe(taskData.priority);
@@ -32,10 +35,10 @@ describe('TaskService', () => {
   it('should throw error when creating task without title', async () => {
     const taskData = {
       description: "Test Description"
-    };
+    } as CreateTaskDTO;
 
-    await expect(taskService.createTask(taskData as CreateTaskDTO))
-      .rejects
-      .toThrow(AppError);
+    await expect(async () => {
+      await taskService.createTask(taskData);
+    }).rejects.toThrow(AppError);
   });
 }); 

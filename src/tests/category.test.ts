@@ -1,4 +1,3 @@
-import { DataSource } from 'typeorm';
 import { Category } from '../entities/Category';
 import { CategoryService } from '../services/CategoryService';
 import { AppError } from '../middlewares/errorHandler';
@@ -7,19 +6,13 @@ import { testDataSource } from './setup';
 
 describe('CategoryService', () => {
   let categoryService: CategoryService;
-  let dataSource: DataSource;
 
   beforeAll(async () => {
-    dataSource = await testDataSource.initialize();
-    categoryService = new CategoryService(dataSource.getRepository(Category));
-  });
-
-  beforeEach(async () => {
-    await dataSource.getRepository(Category).clear();
-  });
-
-  afterAll(async () => {
-    await dataSource.destroy();
+    // Wait for database to be ready
+    if (!testDataSource.isInitialized) {
+      await testDataSource.initialize();
+    }
+    categoryService = new CategoryService(testDataSource.getRepository(Category));
   });
 
   it('should create a category', async () => {
@@ -29,6 +22,8 @@ describe('CategoryService', () => {
     };
 
     const category = await categoryService.createCategory(categoryData);
+    expect(category).toBeDefined();
+    expect(category.id).toBeDefined();
     expect(category.name).toBe(categoryData.name);
     expect(category.description).toBe(categoryData.description);
   });
@@ -36,10 +31,10 @@ describe('CategoryService', () => {
   it('should throw error when creating category without name', async () => {
     const categoryData = {
       description: "Test Description"
-    };
+    } as CreateCategoryDTO;
 
-    await expect(categoryService.createCategory(categoryData as CreateCategoryDTO))
-      .rejects
-      .toThrow(AppError);
+    await expect(async () => {
+      await categoryService.createCategory(categoryData);
+    }).rejects.toThrow(AppError);
   });
 }); 

@@ -15,36 +15,43 @@ export const testDataSource = new DataSource({
   logging: false
 });
 
+let isInitialized = false;
+
 beforeAll(async () => {
-  await testDataSource.initialize();
-  
-  try {
-    await testDataSource.query(`CREATE DATABASE task_management_test`);
-  } catch (error) {
-    console.log('Test database might already exist');
+  if (!isInitialized) {
+    await testDataSource.initialize();
+    
+    try {
+      await testDataSource.query(`DROP DATABASE IF EXISTS task_management_test`);
+      await testDataSource.query(`CREATE DATABASE task_management_test`);
+    } catch (error) {
+      console.error('Database setup error:', error);
+    }
+    
+    await testDataSource.destroy();
+    
+    testDataSource.setOptions({
+      database: 'task_management_test'
+    });
+    
+    await testDataSource.initialize();
+    await testDataSource.synchronize(true);
+    isInitialized = true;
   }
-  
-  await testDataSource.destroy();
-  
-  testDataSource.setOptions({
-    database: 'task_management_test'
-  });
-  
-  await testDataSource.initialize();
-  
-  await testDataSource.synchronize(true);
 });
 
 beforeEach(async () => {
-  const entities = testDataSource.entityMetadatas;
-  for (const entity of entities) {
-    const repository = testDataSource.getRepository(entity.name);
-    await repository.clear();
+  // Clear tables in correct order to handle foreign key constraints
+  try {
+    await testDataSource.query('TRUNCATE TABLE tasks, categories CASCADE');
+  } catch (error) {
+    console.error('Error clearing tables:', error);
   }
 });
 
 afterAll(async () => {
-  if (testDataSource.isInitialized) {
+  if (isInitialized) {
     await testDataSource.destroy();
+    isInitialized = false;
   }
 }); 
