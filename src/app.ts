@@ -1,5 +1,6 @@
-import express from 'express';
+import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { DataSource } from 'typeorm';
 import { Task } from './entities/Task';
 import { Category } from './entities/Category';
@@ -9,12 +10,18 @@ import { TaskService } from './services/TaskService';
 import { CategoryService } from './services/CategoryService';
 import { errorHandler } from './middlewares/errorHandler';
 
-export const createApp = (dataSource: DataSource) => {
-  const app = express();
+export const createApp = (dataSource: DataSource): Application => {
+  const app: Application = express();
 
   // Middleware
   app.use(cors());
+  app.use(helmet());
   app.use(express.json());
+
+  // Health check endpoint
+  app.get('/health', (_req: Request, res: Response) => {
+    res.status(200).json({ status: 'healthy' });
+  });
 
   // Services
   const taskService = new TaskService(dataSource.getRepository(Task));
@@ -25,17 +32,17 @@ export const createApp = (dataSource: DataSource) => {
   const categoryController = new CategoryController(categoryService);
 
   // Routes
-  app.post('/tasks', taskController.createTask);
-  app.get('/tasks', taskController.getTasks);
-  app.get('/tasks/:id', taskController.getTaskById);
-  app.patch('/tasks/:id', taskController.updateTask);
-  app.delete('/tasks/:id', taskController.deleteTask);
+  app.post('/api/tasks', taskController.createTask.bind(taskController));
+  app.get('/api/tasks', taskController.getTasks.bind(taskController));
+  app.get('/api/tasks/:id', taskController.getTaskById.bind(taskController));
+  app.patch('/api/tasks/:id', taskController.updateTask.bind(taskController));
+  app.delete('/api/tasks/:id', taskController.deleteTask.bind(taskController));
 
-  app.post('/categories', categoryController.createCategory);
-  app.get('/categories', categoryController.getAllCategories);
-  app.get('/categories/:id', categoryController.getCategoryById);
-  app.patch('/categories/:id', categoryController.updateCategory);
-  app.delete('/categories/:id', categoryController.deleteCategory);
+  app.post('/api/categories', categoryController.createCategory.bind(categoryController));
+  app.get('/api/categories', categoryController.getAllCategories.bind(categoryController));
+  app.get('/api/categories/:id', categoryController.getCategoryById.bind(categoryController));
+  app.patch('/api/categories/:id', categoryController.updateCategory.bind(categoryController));
+  app.delete('/api/categories/:id', categoryController.deleteCategory.bind(categoryController));
 
   // Error handling
   app.use(errorHandler);

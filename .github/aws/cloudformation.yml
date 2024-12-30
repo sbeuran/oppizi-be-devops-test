@@ -143,6 +143,10 @@ Resources:
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 3
+      HealthCheckEnabled: true
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '30'
 
   Listener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -269,6 +273,11 @@ Resources:
           FromPort: 3000
           ToPort: 3000
           SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
           Value: !Sub task-management-${Environment}-container-sg
