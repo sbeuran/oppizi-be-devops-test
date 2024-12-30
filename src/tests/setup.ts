@@ -27,6 +27,7 @@ beforeAll(async () => {
     await testDataSource.initialize();
     await testDataSource.query('DROP SCHEMA IF EXISTS public CASCADE');
     await testDataSource.query('CREATE SCHEMA public');
+    await testDataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public');
     await testDataSource.query('DROP TYPE IF EXISTS public.tasks_status_enum');
     await testDataSource.synchronize(true);
     console.log('Test database initialized');
@@ -40,6 +41,7 @@ beforeEach(async () => {
   try {
     await testDataSource.query('DROP SCHEMA IF EXISTS public CASCADE');
     await testDataSource.query('CREATE SCHEMA public');
+    await testDataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public');
     await testDataSource.query('DROP TYPE IF EXISTS public.tasks_status_enum');
     await testDataSource.synchronize(true);
     console.log('Database reset for new test');
