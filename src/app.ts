@@ -18,9 +18,23 @@ export const createApp = (dataSource: DataSource): Application => {
   app.use(helmet());
   app.use(express.json());
 
-  // Health check endpoint
-  app.get('/health', (_req: Request, res: Response) => {
-    res.status(200).json({ status: 'healthy' });
+  // Health check endpoint with database check
+  app.get('/health', async (_req: Request, res: Response) => {
+    try {
+      // Check database connection
+      await dataSource.query('SELECT 1');
+      res.status(200).json({ 
+        status: 'healthy',
+        database: 'connected',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(503).json({ 
+        status: 'unhealthy',
+        database: 'disconnected',
+        timestamp: new Date().toISOString()
+      });
+    }
   });
 
   // Services
