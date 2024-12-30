@@ -13,6 +13,7 @@ export const testDataSource = new DataSource({
   username: process.env.DB_USERNAME || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_NAME || 'task_management_test',
+  schema: 'public',
   entities: [Task, Category],
   synchronize: false,
   dropSchema: true,
@@ -22,6 +23,7 @@ export const testDataSource = new DataSource({
 async function resetDatabase() {
   await testDataSource.query('DROP SCHEMA IF EXISTS public CASCADE');
   await testDataSource.query('CREATE SCHEMA public');
+  await testDataSource.query('SET search_path TO public');
   await testDataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public');
   await testDataSource.query('DROP TYPE IF EXISTS public.tasks_status_enum CASCADE');
   await testDataSource.synchronize(true);
