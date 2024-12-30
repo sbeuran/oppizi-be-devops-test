@@ -156,7 +156,10 @@ Resources:
 
   TaskManagementAPI:
     Type: AWS::ECS::Service
-    DependsOn: AttachGateway
+    DependsOn: 
+      - Database  # Wait for RDS
+      - ECRRepository  # Wait for ECR
+      - PublicRoute  # Wait for networking
     Properties:
       ServiceName: !Sub task-management-api-${Environment}
       Cluster: !Ref TaskManagementCluster
@@ -184,6 +187,18 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: ECRAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: '*'
 
   TaskRole:
     Type: AWS::IAM::Role
