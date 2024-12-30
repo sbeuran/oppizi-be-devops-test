@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsEnum, Transform } from 'class-validator';
+import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { TaskStatus } from '../entities/Task';
 
 export class CreateTaskDto {
@@ -43,11 +44,11 @@ export class TaskFilterDto {
   search?: string;
 
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }: { value: string }) => parseInt(value))
   page?: number;
 
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }: { value: string }) => parseInt(value))
   limit?: number;
 
   @IsOptional()
