@@ -68,17 +68,9 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-          
-      - name: Create task-management-api directory
-        run: |
-          mkdir -p task-management-api
-          cp -r ./* task-management-api/ || true
-          cp -r ./.* task-management-api/ || true
-          rm -rf task-management-api/task-management-api || true
+          aws-region: eu-west-1
           
       - name: Deploy to AWS
-        working-directory: ./task-management-api
         run: |
           aws cloudformation deploy \
             --template-file .github/aws/cloudformation.yml \
