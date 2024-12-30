@@ -69,18 +69,59 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-1
-          
-      - name: Delete existing stack if in ROLLBACK_COMPLETE
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: task-management-api-dev
+          IMAGE_TAG: latest
         run: |
-          if aws cloudformation describe-stacks --stack-name task-management-api 2>&1 | grep -q 'ROLLBACK_COMPLETE'; then
-            aws cloudformation delete-stack --stack-name task-management-api
-            aws cloudformation wait stack-delete-complete --stack-name task-management-api
-          fi
-          
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
       - name: Deploy to AWS
         run: |
+          # Deploy stack
           aws cloudformation deploy \
             --template-file .github/aws/cloudformation.yml \
             --stack-name task-management-api \
-            --parameter-overrides Environment=dev \
-            --capabilities CAPABILITY_IAM 
+            --parameter-overrides \
+              Environment=dev \
+              DBHost=${{ secrets.DB_HOST }} \
+              DBPort=${{ secrets.DB_PORT }} \
+              DBUsername=${{ secrets.DB_USERNAME }} \
+              DBPassword=${{ secrets.DB_PASSWORD }} \
+              DBName=${{ secrets.DB_NAME }} \
+            --capabilities CAPABILITY_IAM
+
+          # Wait for database to be available
+          aws cloudformation wait stack-create-complete --stack-name task-management-api
+
+          # Get database endpoint and update GitHub secret
+          DB_ENDPOINT=$(aws cloudformation describe-stacks \
+            --stack-name task-management-api \
+            --query 'Stacks[0].Outputs[?OutputKey==`DatabaseEndpoint`].OutputValue' \
+            --output text)
+
+          # Wait for database to be reachable
+          echo "Waiting for database to be reachable..."
+          timeout=300
+          while ! pg_isready -h $DB_ENDPOINT -p 5432 -U ${{ secrets.DB_USERNAME }}; do
+            sleep 5
+            timeout=$((timeout-5))
+            if [ $timeout -le 0 ]; then
+              echo "Timeout waiting for database"
+              exit 1
+            fi
+          done
+          echo "Database is reachable!"
+
+          # Update DB_HOST secret using PAT
+          gh secret set DB_HOST --body="$DB_ENDPOINT"
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          PGPASSWORD: ${{ secrets.DB_PASSWORD }} 

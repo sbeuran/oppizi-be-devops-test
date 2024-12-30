@@ -1,25 +1,3 @@
-FROM node:18-alpine as builder
-
-WORKDIR /app
-
-# Install TypeScript and ts-node globally
-RUN npm install -g typescript ts-node
-
-COPY package*.json ./
-
-# Install all dependencies (including devDependencies)
-RUN npm install
-
-# Copy source code
-COPY . .
-
-# Create dist directory
-RUN mkdir -p dist
-
-# Build TypeScript code
-RUN npx tsc
-
-# Production stage
 FROM node:18-alpine
 
 WORKDIR /app
@@ -27,21 +5,17 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install only production dependencies
-RUN npm install --production
+# Install dependencies
+RUN npm ci
 
-# Copy built files from builder stage
-COPY --from=builder /app/dist ./dist
+# Copy application code
+COPY . .
 
-# Copy environment file
-COPY .env.example ./.env
+# Build TypeScript
+RUN npm run build
 
-# Add curl for healthcheck
-RUN apk --no-cache add curl
-
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000/api/tasks || exit 1
-
+# Expose port
 EXPOSE 3000
 
+# Start the application
 CMD ["npm", "start"] 
