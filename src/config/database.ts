@@ -14,20 +14,9 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME || 'task_management',
   schema: 'public',
   entities: [Task, Category],
-  synchronize: true,
+  synchronize: false,
   logging: process.env.NODE_ENV === 'development',
   extra: {
-    // Add explicit schema search path
     searchPath: 'public'
   }
-});
-
-// Initialize database connection
-AppDataSource.initialize()
-  .then(() => {
-    console.log('Data Source has been initialized!');
-  })
-  .catch((err: Error) => {
-    console.error('Error during Data Source initialization:', err);
-    process.exit(1);
-  }); 
+}); 
