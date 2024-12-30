@@ -70,6 +70,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-1
           
+      - name: Delete existing stack if in ROLLBACK_COMPLETE
+        run: |
+          if aws cloudformation describe-stacks --stack-name task-management-api 2>&1 | grep -q 'ROLLBACK_COMPLETE'; then
+            aws cloudformation delete-stack --stack-name task-management-api
+            aws cloudformation wait stack-delete-complete --stack-name task-management-api
+          fi
+          
       - name: Deploy to AWS
         run: |
           aws cloudformation deploy \
