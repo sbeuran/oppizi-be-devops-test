@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI/CD
 
 on:
   push:
@@ -7,16 +7,16 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:14-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: task_management
+          POSTGRES_DB: postgres
         ports:
           - 5432:5432
         options: >-
@@ -26,106 +26,26 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          
-      - name: Create task-management-api directory
-        run: |
-          mkdir -p task-management-api
-          shopt -s dotglob nullglob
-          cp -r [!.]* task-management-api/ || true
-          cp -r .[!.]* task-management-api/ || true
-          rm -rf task-management-api/task-management-api || true
-          
-      - name: Install dependencies
-        working-directory: ./task-management-api
-        run: npm ci
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
         
-      - name: Run tests
-        working-directory: ./task-management-api
-        run: npm test
-        env:
-          NODE_ENV: test
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_USERNAME: postgres
-          DB_PASSWORD: postgres
-          DB_NAME: task_management
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v3
+    - name: Install dependencies
+      run: npm ci
       
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-1
-
-      - name: Deploy CloudFormation Stack
-        run: |
-          aws cloudformation deploy \
-            --template-file .github/aws/cloudformation.yml \
-            --stack-name task-management-api \
-            --parameter-overrides \
-              Environment=dev \
-              DBHost=${{ secrets.DB_HOST }} \
-              DBPort=${{ secrets.DB_PORT }} \
-              DBUsername=${{ secrets.DB_USERNAME }} \
-              DBPassword=${{ secrets.DB_PASSWORD }} \
-              DBName=${{ secrets.DB_NAME }} \
-            --capabilities CAPABILITY_IAM
-
-          # Wait with timeout
-          timeout 3600 aws cloudformation wait stack-create-complete --stack-name task-management-api || \
-          timeout 3600 aws cloudformation wait stack-update-complete --stack-name task-management-api
-
-      - name: Check Stack Status
-        run: |
-          STATUS=$(aws cloudformation describe-stacks --stack-name task-management-api --query 'Stacks[0].StackStatus' --output text)
-          if [[ $STATUS != *"COMPLETE"* ]]; then
-            echo "Stack failed with status: $STATUS"
-            aws cloudformation describe-stack-events --stack-name task-management-api
-            exit 1
-          fi
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Build and push Docker image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: task-management-api-dev
-          IMAGE_TAG: latest
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-      - name: Update ECS Service
-        run: |
-          aws ecs update-service \
-            --cluster task-management-dev \
-            --service task-management-api-dev \
-            --force-new-deployment
-
-      - name: Update Database Host
-        run: |
-          # Get database endpoint
-          DB_ENDPOINT=$(aws cloudformation describe-stacks \
-            --stack-name task-management-api \
-            --query 'Stacks[0].Outputs[?OutputKey==`DatabaseEndpoint`].OutputValue' \
-            --output text)
-
-          # Update DB_HOST secret
-          gh secret set DB_HOST --body="$DB_ENDPOINT"
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT }} 
+    - name: Create test database
+      run: |
+        PGPASSWORD=postgres psql -h localhost -U postgres -c 'CREATE DATABASE task_management_test;'
+      
+    - name: Run tests
+      run: npm test
+      env:
+        TEST_DB_HOST: localhost
+        TEST_DB_PORT: 5432
+        TEST_DB_USERNAME: postgres
+        TEST_DB_PASSWORD: postgres
+        TEST_DB_NAME: task_management_test
+        NODE_ENV: test 

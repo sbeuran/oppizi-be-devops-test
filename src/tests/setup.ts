@@ -8,7 +8,7 @@ export const testDataSource = new DataSource({
   port: parseInt(process.env.TEST_DB_PORT || "5432"),
   username: process.env.TEST_DB_USERNAME || "postgres",
   password: process.env.TEST_DB_PASSWORD || "postgres",
-  database: process.env.TEST_DB_NAME || "task_management_test",
+  database: "postgres",
   entities: [Task, Category],
   synchronize: true,
   dropSchema: true,
@@ -16,8 +16,30 @@ export const testDataSource = new DataSource({
 });
 
 beforeAll(async () => {
-  if (!testDataSource.isInitialized) {
-    await testDataSource.initialize();
+  await testDataSource.initialize();
+  
+  try {
+    await testDataSource.query(`CREATE DATABASE task_management_test`);
+  } catch (error) {
+    console.log('Test database might already exist');
+  }
+  
+  await testDataSource.destroy();
+  
+  testDataSource.setOptions({
+    database: 'task_management_test'
+  });
+  
+  await testDataSource.initialize();
+  
+  await testDataSource.synchronize(true);
+});
+
+beforeEach(async () => {
+  const entities = testDataSource.entityMetadatas;
+  for (const entity of entities) {
+    const repository = testDataSource.getRepository(entity.name);
+    await repository.clear();
   }
 });
 
