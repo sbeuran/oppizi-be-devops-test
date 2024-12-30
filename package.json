@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",
-    "dev": "nodemon src/server.ts",
+    "dev": "nodemon",
     "build": "tsc",
     "test": "jest --detectOpenHandles --forceExit",
     "typeorm": "typeorm-ts-node-commonjs"
