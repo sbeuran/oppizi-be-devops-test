@@ -1,31 +1,18 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Task Management API Infrastructure'
+AWSTemplateFormatVersion: '2010-09-01'
+Description: Task Management API Infrastructure
 
 Parameters:
   Environment:
     Type: String
-    Default: dev
-    AllowedValues: [dev, staging, prod]
-  
-  DBHost:
-    Type: String
-    Default: localhost
-    
-  DBPort:
-    Type: String
-    Default: "5432"
-    
+    Default: prod
+    AllowedValues: [dev, prod]
   DBUsername:
     Type: String
-    Default: postgres
-    
   DBPassword:
     Type: String
-    Default: postgres
-    
+    NoEcho: true
   DBName:
     Type: String
-    Default: task_management
 
 Resources:
   # VPC Resources
@@ -115,16 +102,64 @@ Resources:
       ImageScanningConfiguration:
         ScanOnPush: true
 
-  # Update TaskDefinition to use ECR image
+  # Add Application Load Balancer
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub task-management-${Environment}-alb
+      Subnets: 
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      SecurityGroups: 
+        - !Ref LoadBalancerSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub task-management-${Environment}-alb
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ALB
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub task-management-${Environment}-tg
+      Port: 3000
+      Protocol: HTTP
+      TargetType: ip
+      VpcId: !Ref VPC
+      HealthCheckPath: /health
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  # Update Task Definition with correct DB host
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Family: !Sub task-management-api-${Environment}
-      RequiresCompatibilities:
-        - FARGATE
+      RequiresCompatibilities: [FARGATE]
       NetworkMode: awsvpc
-      Cpu: '256'
-      Memory: '512'
+      Cpu: 256
+      Memory: 512
       ExecutionRoleArn: !GetAtt ExecutionRole.Arn
       TaskRoleArn: !GetAtt TaskRole.Arn
       ContainerDefinitions:
@@ -138,9 +173,9 @@ Resources:
             - Name: NODE_ENV
               Value: !Ref Environment
             - Name: DB_HOST
-              Value: !Ref DBHost
+              Value: !GetAtt Database.Endpoint.Address
             - Name: DB_PORT
-              Value: !Ref DBPort
+              Value: !GetAtt Database.Endpoint.Port
             - Name: DB_USERNAME
               Value: !Ref DBUsername
             - Name: DB_PASSWORD
@@ -154,26 +189,28 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: api
 
+  # Update ECS Service to use ALB
   TaskManagementAPI:
     Type: AWS::ECS::Service
-    DependsOn: 
-      - Database  # Wait for RDS
-      - ECRRepository  # Wait for ECR
-      - PublicRoute  # Wait for networking
+    DependsOn: Listener
     Properties:
       ServiceName: !Sub task-management-api-${Environment}
       Cluster: !Ref TaskManagementCluster
       TaskDefinition: !Ref TaskDefinition
       DesiredCount: 1
       LaunchType: FARGATE
+      LoadBalancers:
+        - TargetGroupArn: !Ref TargetGroup
+          ContainerName: api
+          ContainerPort: 3000
       NetworkConfiguration:
         AwsvpcConfiguration:
-          AssignPublicIp: ENABLED
           SecurityGroups:
             - !Ref ContainerSecurityGroup
           Subnets:
             - !Ref PublicSubnet1
             - !Ref PublicSubnet2
+          AssignPublicIp: ENABLED
 
   ExecutionRole:
     Type: AWS::IAM::Role
@@ -277,3 +314,7 @@ Outputs:
   ECRRepository:
     Description: The name of the ECR repository
     Value: !Sub task-management-api-${Environment}
+
+  ApiEndpoint:
+    Description: API Endpoint URL
+    Value: !Sub http://${LoadBalancer.DNSName}
