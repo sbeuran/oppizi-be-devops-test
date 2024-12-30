@@ -139,14 +139,16 @@ Resources:
       TargetType: ip
       VpcId: !Ref VPC
       HealthCheckPath: /health
-      HealthCheckIntervalSeconds: 30
-      HealthCheckTimeoutSeconds: 5
+      HealthCheckIntervalSeconds: 60
+      HealthCheckTimeoutSeconds: 30
       HealthyThresholdCount: 2
-      UnhealthyThresholdCount: 3
+      UnhealthyThresholdCount: 5
       HealthCheckEnabled: true
       TargetGroupAttributes:
         - Key: deregistration_delay.timeout_seconds
-          Value: '30'
+          Value: '60'
+        - Key: stickiness.enabled
+          Value: 'false'
 
   Listener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -189,6 +191,21 @@ Resources:
               Value: !Ref DBPassword
             - Name: DB_NAME
               Value: !Ref DBName
+          EntryPoint:
+            - sh
+            - -c
+          Command:
+            - |
+              apk add --no-cache curl
+              node dist/server.js
+          HealthCheck:
+            Command: 
+              - CMD-SHELL
+              - curl -f http://localhost:3000/health || exit 1
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -201,13 +218,16 @@ Resources:
     Type: AWS::ECS::Service
     DependsOn: 
       - Listener
-      - Database  # Wait for RDS to be ready
+      - Database
+      - LoadBalancer
+      - DatabaseSecurityGroup
     Properties:
       ServiceName: !Sub task-management-api-${Environment}
       Cluster: !Ref TaskManagementCluster
       TaskDefinition: !Ref TaskDefinition
       DesiredCount: 1
       LaunchType: FARGATE
+      PlatformVersion: LATEST
       LoadBalancers:
         - TargetGroupArn: !Ref TargetGroup
           ContainerName: api
@@ -220,6 +240,13 @@ Resources:
             - !Ref PublicSubnet1
             - !Ref PublicSubnet2
           AssignPublicIp: ENABLED
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      EnableExecuteCommand: true
 
   ExecutionRole:
     Type: AWS::IAM::Role
