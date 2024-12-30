@@ -258,3 +258,7 @@ Outputs:
   DatabaseEndpoint:
     Description: The connection endpoint for the database
     Value: !GetAtt Database.Endpoint.Address
+
+  ECRRepository:
+    Description: The name of the ECR repository
+    Value: !Sub task-management-api-${Environment}

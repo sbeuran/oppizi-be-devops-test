@@ -85,7 +85,7 @@ jobs:
 
       - name: Deploy to AWS
         run: |
-          # Deploy stack
+          # First deploy stack to create ECR repository
           aws cloudformation deploy \
             --template-file .github/aws/cloudformation.yml \
             --stack-name task-management-api \
@@ -98,30 +98,24 @@ jobs:
               DBName=${{ secrets.DB_NAME }} \
             --capabilities CAPABILITY_IAM
 
-          # Wait for database to be available
+          # Wait for ECR repository to be created
           aws cloudformation wait stack-create-complete --stack-name task-management-api
 
-          # Get database endpoint and update GitHub secret
-          DB_ENDPOINT=$(aws cloudformation describe-stacks \
+          # Get ECR repository URI
+          ECR_REPOSITORY=$(aws cloudformation describe-stacks \
             --stack-name task-management-api \
-            --query 'Stacks[0].Outputs[?OutputKey==`DatabaseEndpoint`].OutputValue' \
+            --query 'Stacks[0].Outputs[?OutputKey==`ECRRepository`].OutputValue' \
             --output text)
 
-          # Wait for database to be reachable
-          echo "Waiting for database to be reachable..."
-          timeout=300
-          while ! pg_isready -h $DB_ENDPOINT -p 5432 -U ${{ secrets.DB_USERNAME }}; do
-            sleep 5
-            timeout=$((timeout-5))
-            if [ $timeout -le 0 ]; then
-              echo "Timeout waiting for database"
-              exit 1
-            fi
-          done
-          echo "Database is reachable!"
+          # Build and push image
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-          # Update DB_HOST secret using PAT
-          gh secret set DB_HOST --body="$DB_ENDPOINT"
+          # Update service to use new image
+          aws ecs update-service \
+            --cluster task-management-dev \
+            --service task-management-api-dev \
+            --force-new-deployment
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
           PGPASSWORD: ${{ secrets.DB_PASSWORD }} 
