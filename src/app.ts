@@ -42,13 +42,14 @@ const initializeDB = async (retries = 5, delay = 5000) => {
   throw new Error("Failed to initialize database connection after multiple attempts");
 };
 
+// Initialize database
 initializeDB().catch(error => {
   console.error("Fatal error initializing database:", error);
   process.exit(1);
 });
 
 // Health check route
-app.get('/health', async (req: Request, res: Response) => {
+app.get('/health', (req: Request, res: Response) => {
   try {
     const isConnected = AppDataSource.isInitialized;
     if (!isConnected) {
@@ -57,23 +58,22 @@ app.get('/health', async (req: Request, res: Response) => {
         message: 'Database connection not initialized'
       });
     }
-    res.status(200).json({ 
+    return res.status(200).json({ 
       status: 'ok',
       database: 'connected'
     });
   } catch (error) {
     console.error('Health check failed:', error);
     if (error instanceof Error) {
-      res.status(500).json({ 
+      return res.status(500).json({ 
         status: 'error',
         message: error.message 
       });
-    } else {
-      res.status(500).json({ 
-        status: 'error',
-        message: 'An unknown error occurred' 
-      });
     }
+    return res.status(500).json({ 
+      status: 'error',
+      message: 'An unknown error occurred' 
+    });
   }
 });
 
