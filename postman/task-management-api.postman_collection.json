@@ -1,0 +1,200 @@
+{
+    "info": {
+      "name": "Task Management API",
+      "description": "API for managing tasks and categories",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+      {
+        "key": "base_url",
+        "value": "http://18.201.39.167:3000",
+        "type": "string"
+      },
+      {
+        "key": "category_id",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "task_id",
+        "value": "",
+        "type": "string"
+      }
+    ],
+    "item": [
+      {
+        "name": "Health",
+        "request": {
+          "method": "GET",
+          "url": "{{base_url}}/health",
+          "description": "Check API health status"
+        }
+      },
+      {
+        "name": "Categories",
+        "item": [
+          {
+            "name": "Create Category",
+            "request": {
+              "method": "POST",
+              "url": "{{base_url}}/api/categories",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"Work Tasks\"\n}"
+              },
+              "description": "Create a new category"
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "if (pm.response.code === 201) {",
+                    "    const responseData = pm.response.json();",
+                    "    pm.collectionVariables.set('category_id', responseData.id);",
+                    "}"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "List Categories",
+            "request": {
+              "method": "GET",
+              "url": "{{base_url}}/api/categories",
+              "description": "Get all categories"
+            }
+          },
+          {
+            "name": "Get Category by ID",
+            "request": {
+              "method": "GET",
+              "url": "{{base_url}}/api/categories/{{category_id}}",
+              "description": "Get a specific category by ID"
+            }
+          },
+          {
+            "name": "Update Category",
+            "request": {
+              "method": "PUT",
+              "url": "{{base_url}}/api/categories/{{category_id}}",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"Updated Category Name\"\n}"
+              },
+              "description": "Update a category"
+            }
+          },
+          {
+            "name": "Delete Category",
+            "request": {
+              "method": "DELETE",
+              "url": "{{base_url}}/api/categories/{{category_id}}",
+              "description": "Delete a category"
+            }
+          }
+        ]
+      },
+      {
+        "name": "Tasks",
+        "item": [
+          {
+            "name": "Create Task",
+            "request": {
+              "method": "POST",
+              "url": "{{base_url}}/api/tasks",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"title\": \"Deploy API\",\n  \"description\": \"Complete API deployment to AWS\",\n  \"dueDate\": \"2024-12-31\",\n  \"categoryId\": \"{{category_id}}\"\n}"
+              },
+              "description": "Create a new task"
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "if (pm.response.code === 201) {",
+                    "    const responseData = pm.response.json();",
+                    "    pm.collectionVariables.set('task_id', responseData.id);",
+                    "}"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "List Tasks",
+            "request": {
+              "method": "GET",
+              "url": "{{base_url}}/api/tasks",
+              "description": "Get all tasks"
+            }
+          },
+          {
+            "name": "Get Task by ID",
+            "request": {
+              "method": "GET",
+              "url": "{{base_url}}/api/tasks/{{task_id}}",
+              "description": "Get a specific task by ID"
+            }
+          },
+          {
+            "name": "Update Task",
+            "request": {
+              "method": "PUT",
+              "url": "{{base_url}}/api/tasks/{{task_id}}",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"title\": \"Updated Task Title\",\n  \"description\": \"Updated task description\",\n  \"dueDate\": \"2024-12-31\",\n  \"categoryId\": \"{{category_id}}\"\n}"
+              },
+              "description": "Update a task"
+            }
+          },
+          {
+            "name": "Delete Task",
+            "request": {
+              "method": "DELETE",
+              "url": "{{base_url}}/api/tasks/{{task_id}}",
+              "description": "Delete a task"
+            }
+          },
+          {
+            "name": "Get Tasks by Category",
+            "request": {
+              "method": "GET",
+              "url": "{{base_url}}/api/tasks/category/{{category_id}}",
+              "description": "Get all tasks in a specific category"
+            }
+          }
+        ]
+      }
+    ]
+  }
