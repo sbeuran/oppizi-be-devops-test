@@ -6,24 +6,6 @@ import { Task } from './entities/Task';
 import { getTaskRouter } from './routes/task.routes';
 import { getCategoryRouter } from './routes/category.routes';
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-// Database connection
-export const AppDataSource = new DataSource({
-  type: "postgres",
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || "5432"),
-  username: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  entities: [Category, Task],
-  synchronize: true,
-  logging: process.env.NODE_ENV !== 'production',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
-
 // Initialize database connection with retries
 const initializeDB = async (retries = 5, delay = 5000) => {
   for (let i = 0; i < retries; i++) {
@@ -42,11 +24,31 @@ const initializeDB = async (retries = 5, delay = 5000) => {
   throw new Error("Failed to initialize database connection after multiple attempts");
 };
 
-// Initialize database
-initializeDB().catch(error => {
-  console.error("Fatal error initializing database:", error);
-  process.exit(1);
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// Database connection
+export const AppDataSource = new DataSource({
+  type: "postgres",
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT || "5432"),
+  username: process.env.DB_USERNAME,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  entities: [Category, Task],
+  synchronize: true,
+  logging: process.env.NODE_ENV !== 'production',
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
+
+// Only initialize AppDataSource if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  initializeDB().catch(error => {
+    console.error("Fatal error initializing database:", error);
+    process.exit(1);
+  });
+}
 
 // Health check route
 const healthCheck: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {

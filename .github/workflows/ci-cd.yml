@@ -60,7 +60,9 @@ jobs:
       - name: Run tests
         run: |
           # Wait for PostgreSQL to be ready
-          sleep 5
+          sleep 10
+          # Create uuid extension
+          PGPASSWORD=postgres psql -h localhost -U postgres -d task_management_test -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'
           # Run tests
           npm test
         env:
