@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { createApp } from './app';
+import App from './app';
 import { AppDataSource } from './config/database';
 import dotenv from 'dotenv';
 
@@ -12,9 +12,9 @@ async function startServer() {
     await AppDataSource.initialize();
     console.log('Database connection established');
 
-    const app = createApp(AppDataSource);
+    const application = new App(AppDataSource);
     
-    app.listen(PORT, () => {
+    application.app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {

@@ -1,10 +1,11 @@
 import request from 'supertest';
-import { createApp } from '../app';
+import App from '../app';
 import { testDataSource } from './setup';
 import { Task } from '../entities/Task';
 import { Category } from '../entities/Category';
 
-const app = createApp(testDataSource);
+const application = new App(testDataSource);
+const app = application.app;
 
 describe('Task API', () => {
   let categoryId: string;

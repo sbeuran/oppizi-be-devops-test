@@ -1,9 +1,10 @@
 import request from 'supertest';
-import { createApp } from '../app';
+import App from '../app';
 import { testDataSource } from './setup';
 import { Category } from '../entities/Category';
 
-const app = createApp(testDataSource);
+const application = new App(testDataSource);
+const app = application.app;  // Get Express app instance
 
 describe('Category API', () => {
   describe('POST /api/categories', () => {

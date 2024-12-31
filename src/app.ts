@@ -1,43 +1,31 @@
-import 'reflect-metadata';
-import express from 'express';
+import express, { Express } from 'express';
 import cors from 'cors';
 import { DataSource } from 'typeorm';
-import { TaskController } from './controllers/TaskController';
-import { CategoryController } from './controllers/CategoryController';
-import { TaskService } from './services/TaskService';
-import { CategoryService } from './services/CategoryService';
+import taskRoutes from './routes/task.routes';
+import categoryRoutes from './routes/category.routes';
 import { errorHandler } from './middlewares/errorHandler';
 
-export function createApp(dataSource: DataSource) {
-  const app = express();
+export class App {
+  public app: Express;
 
-  // Middleware
-  app.use(cors());
-  app.use(express.json());
+  constructor(private dataSource: DataSource) {
+    this.app = express();
+    this.config();
+    this.routes();
+  }
 
-  // Services
-  const taskService = new TaskService(dataSource.getRepository('Task'));
-  const categoryService = new CategoryService(dataSource.getRepository('Category'));
+  private config(): void {
+    this.app.use(cors());
+    this.app.use(express.json());
+  }
 
-  // Controllers
-  const taskController = new TaskController(taskService);
-  const categoryController = new CategoryController(categoryService);
+  private routes(): void {
+    this.app.use('/api/tasks', taskRoutes(this.dataSource));
+    this.app.use('/api/categories', categoryRoutes(this.dataSource));
+    
+    // Error handler should be the last middleware
+    this.app.use(errorHandler);
+  }
+}
 
-  // Routes
-  app.post('/api/tasks', taskController.createTask.bind(taskController));
-  app.get('/api/tasks', taskController.getTasks.bind(taskController));
-  app.get('/api/tasks/:id', taskController.getTaskById.bind(taskController));
-  app.put('/api/tasks/:id', taskController.updateTask.bind(taskController));
-  app.delete('/api/tasks/:id', taskController.deleteTask.bind(taskController));
-
-  app.post('/api/categories', categoryController.createCategory.bind(categoryController));
-  app.get('/api/categories', categoryController.getAllCategories.bind(categoryController));
-  app.get('/api/categories/:id', categoryController.getCategoryById.bind(categoryController));
-  app.put('/api/categories/:id', categoryController.updateCategory.bind(categoryController));
-  app.delete('/api/categories/:id', categoryController.deleteCategory.bind(categoryController));
-
-  // Error handling
-  app.use(errorHandler);
-
-  return app;
-} 
+export default App; 
