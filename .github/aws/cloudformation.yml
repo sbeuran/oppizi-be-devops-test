@@ -1,13 +1,14 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Task Management API Infrastructure
+Description: 'Task Management API Infrastructure'
 
 Parameters:
   Environment:
     Type: String
     Default: prod
-    AllowedValues: [dev, prod]
+    AllowedValues: [prod, dev]
   DBUsername:
     Type: String
+    NoEcho: true
   DBPassword:
     Type: String
     NoEcho: true
@@ -15,248 +16,57 @@ Parameters:
     Type: String
 
 Resources:
-  # VPC Resources
-  VPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsHostnames: true
-      EnableDnsSupport: true
-      Tags:
-        - Key: Name
-          Value: !Sub task-management-${Environment}-vpc
-
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-    Properties:
-      Tags:
-        - Key: Name
-          Value: !Sub task-management-${Environment}-igw
-
-  AttachGateway:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId: !Ref VPC
-      InternetGatewayId: !Ref InternetGateway
-
-  PublicRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Sub task-management-${Environment}-public-rt
-
-  PublicRoute:
-    Type: AWS::EC2::Route
-    DependsOn: AttachGateway
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-
-  PublicSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Select [0, !GetAZs '']
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub task-management-${Environment}-public-1
-
-  PublicSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.2.0/24
-      AvailabilityZone: !Select [1, !GetAZs '']
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub task-management-${Environment}-public-2
-
-  PublicSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet1
-      RouteTableId: !Ref PublicRouteTable
-
-  PublicSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet2
-      RouteTableId: !Ref PublicRouteTable
-
-  TaskManagementCluster:
-    Type: AWS::ECS::Cluster
-    Properties:
-      ClusterName: !Sub task-management-${Environment}
-
-  # Add ECR Repository
+  # Use existing ECR repository
   ECRRepository:
     Type: AWS::ECR::Repository
+    DeletionPolicy: Retain
     Properties:
-      RepositoryName: !Sub task-management-api-${Environment}
+      RepositoryName: task-management-api-prod
       ImageScanningConfiguration:
         ScanOnPush: true
 
-  # Add Application Load Balancer
-  LoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+  # Use existing VPC or create new one
+  VPC:
+    Type: AWS::EC2::VPC
+    DeletionPolicy: Retain
     Properties:
-      Name: !Sub task-management-${Environment}-alb
-      Subnets: 
-        - !Ref PublicSubnet1
-        - !Ref PublicSubnet2
-      SecurityGroups: 
-        - !Ref LoadBalancerSecurityGroup
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
       Tags:
         - Key: Name
-          Value: !Sub task-management-${Environment}-alb
+          Value: task-management-prod-vpc
 
-  LoadBalancerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
+  # Use existing Internet Gateway or create new one
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    DeletionPolicy: Retain
     Properties:
-      GroupDescription: Security group for ALB
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
-          Value: !Sub task-management-${Environment}-alb-sg
+          Value: task-management-prod-igw
 
-  TargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+  # Use existing Log Group or create new one
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
     Properties:
-      Name: !Sub task-management-${Environment}-tg
-      Port: 3000
-      Protocol: HTTP
-      TargetType: ip
-      VpcId: !Ref VPC
-      HealthCheckPath: /health
-      HealthCheckIntervalSeconds: 60
-      HealthCheckTimeoutSeconds: 30
-      HealthyThresholdCount: 2
-      UnhealthyThresholdCount: 5
-      HealthCheckEnabled: true
-      TargetGroupAttributes:
-        - Key: deregistration_delay.timeout_seconds
-          Value: '30'
+      LogGroupName: /ecs/task-management-api-prod
+      RetentionInDays: 7
 
-  Listener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
+  # Use existing ECS Cluster or create new one
+  TaskManagementCluster:
+    Type: AWS::ECS::Cluster
+    DeletionPolicy: Retain
     Properties:
-      LoadBalancerArn: !Ref LoadBalancer
-      Port: 80
-      Protocol: HTTP
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref TargetGroup
+      ClusterName: task-management-prod
 
-  # Update Task Definition with correct DB host
-  TaskDefinition:
-    Type: AWS::ECS::TaskDefinition
-    Properties:
-      Family: !Sub task-management-api-${Environment}
-      RequiresCompatibilities: [FARGATE]
-      NetworkMode: awsvpc
-      Cpu: 256
-      Memory: 512
-      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
-      TaskRoleArn: !GetAtt TaskRole.Arn
-      ContainerDefinitions:
-        - Name: api
-          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/task-management-api-prod:latest
-          Essential: true
-          PortMappings:
-            - ContainerPort: 3000
-              Protocol: tcp
-          Environment:
-            - Name: NODE_ENV
-              Value: production
-            - Name: DB_HOST
-              Value: !GetAtt Database.Endpoint.Address
-            - Name: DB_PORT
-              Value: "5432"
-            - Name: DB_USERNAME
-              Value: !Ref DBUsername
-            - Name: DB_PASSWORD
-              Value: !Ref DBPassword
-            - Name: DB_NAME
-              Value: !Ref DBName
-          EntryPoint:
-            - "/bin/sh"
-            - "-c"
-          Command:
-            - |
-              set -e
-              apk add --no-cache curl postgresql-client
-              echo "Waiting for database..."
-              until PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -U $DB_USERNAME -d $DB_NAME -c "SELECT 1" > /dev/null 2>&1; do
-                echo "Database not ready yet..."
-                sleep 5
-              done
-              echo "Database is ready, starting application..."
-              node dist/server.js
-          HealthCheck:
-            Command:
-              - CMD-SHELL
-              - curl -f http://localhost:3000/health || exit 1
-            Interval: 60
-            Timeout: 10
-            Retries: 3
-            StartPeriod: 180
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-group: !Ref LogGroup
-              awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: api
-
-  # Update ECS Service to use ALB
-  TaskManagementAPI:
-    Type: AWS::ECS::Service
-    DependsOn: 
-      - Listener
-      - Database
-      - LoadBalancer
-      - DatabaseSecurityGroup
-      - TaskDefinition
-    Properties:
-      ServiceName: !Sub task-management-api-${Environment}
-      Cluster: !Ref TaskManagementCluster
-      TaskDefinition: !Ref TaskDefinition
-      DesiredCount: 1
-      LaunchType: FARGATE
-      PlatformVersion: LATEST
-      LoadBalancers:
-        - TargetGroupArn: !Ref TargetGroup
-          ContainerName: api
-          ContainerPort: 3000
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          SecurityGroups:
-            - !Ref ContainerSecurityGroup
-          Subnets:
-            - !Ref PublicSubnet1
-            - !Ref PublicSubnet2
-          AssignPublicIp: ENABLED
-      DeploymentConfiguration:
-        MaximumPercent: 200
-        MinimumHealthyPercent: 0
-        DeploymentCircuitBreaker:
-          Enable: true
-          Rollback: true
-      EnableExecuteCommand: true
-
-  ExecutionRole:
+  # IAM Roles with unique names
+  TaskRole:
     Type: AWS::IAM::Role
+    DeletionPolicy: Retain
     Properties:
+      RoleName: !Sub ${AWS::StackName}-TaskRole-${AWS::Region}
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -264,8 +74,21 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
+
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    DeletionPolicy: Retain
+    Properties:
+      RoleName: !Sub ${AWS::StackName}-ExecRole-${AWS::Region}
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
       Policies:
         - PolicyName: ECRAccess
           PolicyDocument:
@@ -279,92 +102,13 @@ Resources:
                   - ecr:BatchGetImage
                 Resource: '*'
 
-  TaskRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-
-  LogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub /ecs/task-management-api-${Environment}
-      RetentionInDays: 7
-
-  ContainerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for task management API containers
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 3000
-          ToPort: 3000
-          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
-      SecurityGroupEgress:
-        - IpProtocol: -1
-          FromPort: -1
-          ToPort: -1
-          CidrIp: 0.0.0.0/0
-      Tags:
-        - Key: Name
-          Value: !Sub task-management-${Environment}-container-sg
-
-  # Add RDS Database
-  DatabaseSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security group for RDS database
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 5432
-          ToPort: 5432
-          SourceSecurityGroupId: !Ref ContainerSecurityGroup
-
-  DatabaseSubnetGroup:
-    Type: AWS::RDS::DBSubnetGroup
-    Properties:
-      DBSubnetGroupDescription: Subnet group for RDS database
-      SubnetIds:
-        - !Ref PublicSubnet1
-        - !Ref PublicSubnet2
-
-  Database:
-    Type: AWS::RDS::DBInstance
-    Properties:
-      DBName: !Ref DBName
-      Engine: postgres
-      EngineVersion: 14.9
-      MasterUsername: !Ref DBUsername
-      MasterUserPassword: !Ref DBPassword
-      DBInstanceClass: db.t3.micro
-      AllocatedStorage: 20
-      PubliclyAccessible: true
-      VPCSecurityGroups:
-        - !Ref DatabaseSecurityGroup
-      DBSubnetGroupName: !Ref DatabaseSubnetGroup
-      BackupRetentionPeriod: 7
-      MultiAZ: false
-
 Outputs:
   ClusterName:
-    Description: The name of the ECS cluster
+    Description: ECS Cluster Name
     Value: !Ref TaskManagementCluster
-  
-  DatabaseEndpoint:
-    Description: The connection endpoint for the database
-    Value: !GetAtt Database.Endpoint.Address
-
-  ECRRepository:
-    Description: The name of the ECR repository
-    Value: !Sub task-management-api-${Environment}
-
-  ApiEndpoint:
-    Description: API Endpoint URL
-    Value: !Sub http://${LoadBalancer.DNSName}
+  ExecutionRoleArn:
+    Description: ECS Task Execution Role ARN
+    Value: !GetAtt ExecutionRole.Arn
+  TaskRoleArn:
+    Description: ECS Task Role ARN
+    Value: !GetAtt TaskRole.Arn
