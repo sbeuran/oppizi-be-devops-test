@@ -4,14 +4,16 @@ import app, { initializeApp } from '../app';
 import { Task } from '../entities/Task';
 import { Category } from '../entities/Category';
 import { testDataSource, initializeTestDB } from './test-db';
+import { Application } from 'express';
 
 describe('Task API', () => {
   let dataSource: DataSource;
   let categoryId: string;
+  let initializedApp: Application;
 
   beforeAll(async () => {
     dataSource = await initializeTestDB();
-    await initializeApp(); // Make sure this completes before tests run
+    initializedApp = await initializeApp();
   });
 
   afterAll(async () => {
@@ -30,7 +32,7 @@ describe('Task API', () => {
 
   describe('POST /api/tasks', () => {
     it('should create a new task', async () => {
-      const response = await request(app)
+      const response = await request(initializedApp)
         .post('/api/tasks')
         .send({
           title: 'Test Task',
@@ -56,7 +58,7 @@ describe('Task API', () => {
     });
 
     it('should return all tasks', async () => {
-      const response = await request(app).get('/api/tasks');
+      const response = await request(initializedApp).get('/api/tasks');
       expect(response.status).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body[0]).toHaveProperty('title', 'Test Task');

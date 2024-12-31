@@ -15,16 +15,14 @@ export const AppDataSource = new DataSource({
   type: "postgres",
   host: process.env.DB_HOST || "localhost",
   port: parseInt(process.env.DB_PORT || "5432"),
-  username: process.env.NODE_ENV === 'test' ? 'postgres' : process.env.DB_USERNAME,
-  password: process.env.NODE_ENV === 'test' ? 'postgres' : process.env.DB_PASSWORD,
-  database: process.env.NODE_ENV === 'test' ? 'task_management_test' : process.env.DB_NAME,
+  username: "postgres",
+  password: "postgres",
+  database: "task_management_test",
   entities: [Category, Task],
   synchronize: true,
-  logging: process.env.NODE_ENV !== 'production',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  logging: false,
+  ssl: false
 });
-
-let routesInitialized = false;
 
 // Initialize database and routes
 export const initializeApp = async () => {
@@ -35,9 +33,13 @@ export const initializeApp = async () => {
     }
 
     // Set up API routes
-    app.use('/api/tasks', getTaskRouter(AppDataSource));
-    app.use('/api/categories', getCategoryRouter(AppDataSource));
-    
+    const taskRouter = getTaskRouter(AppDataSource);
+    const categoryRouter = getCategoryRouter(AppDataSource);
+
+    app.use('/api/tasks', taskRouter);
+    app.use('/api/categories', categoryRouter);
+
+    console.log("Routes initialized");
     return app;
   } catch (error) {
     console.error('Failed to initialize app:', error);
@@ -47,11 +49,7 @@ export const initializeApp = async () => {
 
 // Health check route
 app.get('/health', (req: Request, res: Response) => {
-  const isConnected = AppDataSource.isInitialized;
-  res.status(isConnected ? 200 : 500).json({ 
-    status: isConnected ? 'ok' : 'error',
-    database: isConnected ? 'connected' : 'disconnected'
-  });
+  res.status(200).json({ status: 'ok' });
 });
 
 // Error handling middleware

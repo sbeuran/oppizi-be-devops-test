@@ -3,13 +3,15 @@ import { DataSource } from 'typeorm';
 import app, { initializeApp } from '../app';
 import { Category } from '../entities/Category';
 import { testDataSource, initializeTestDB } from './test-db';
+import { Application } from 'express';
 
 describe('Category API', () => {
   let dataSource: DataSource;
+  let initializedApp: Application;
 
   beforeAll(async () => {
     dataSource = await initializeTestDB();
-    await initializeApp();
+    initializedApp = await initializeApp();
   });
 
   afterAll(async () => {
@@ -24,7 +26,7 @@ describe('Category API', () => {
 
   describe('POST /api/categories', () => {
     it('should create a new category', async () => {
-      const response = await request(app)
+      const response = await request(initializedApp)
         .post('/api/categories')
         .send({
           name: 'Test Category'
@@ -44,7 +46,7 @@ describe('Category API', () => {
     });
 
     it('should return all categories', async () => {
-      const response = await request(app).get('/api/categories');
+      const response = await request(initializedApp).get('/api/categories');
       expect(response.status).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body[0]).toHaveProperty('name', 'Test Category');
