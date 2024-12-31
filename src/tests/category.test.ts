@@ -1,16 +1,24 @@
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import app from '../app';
-import { AppDataSource } from '../app';
 import { Category } from '../entities/Category';
+import { testDataSource } from './test-db';
 
 describe('Category API', () => {
+  let dataSource: DataSource;
+
   beforeAll(async () => {
-    await AppDataSource.initialize();
+    dataSource = testDataSource;
+    await dataSource.initialize();
   });
 
   afterAll(async () => {
-    await AppDataSource.destroy();
+    await dataSource.destroy();
+  });
+
+  beforeEach(async () => {
+    // Clear the database before each test
+    await dataSource.synchronize(true);
   });
 
   describe('POST /api/categories', () => {
@@ -29,7 +37,7 @@ describe('Category API', () => {
 
   describe('GET /api/categories', () => {
     beforeEach(async () => {
-      await AppDataSource.getRepository(Category).save({
+      await dataSource.getRepository(Category).save({
         name: 'Test Category'
       });
     });

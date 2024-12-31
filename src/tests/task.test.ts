@@ -1,23 +1,29 @@
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import app from '../app';
-import { AppDataSource } from '../app';
 import { Task } from '../entities/Task';
 import { Category } from '../entities/Category';
+import { testDataSource } from './test-db';
 
 describe('Task API', () => {
+  let dataSource: DataSource;
+  let categoryId: string;
+
   beforeAll(async () => {
-    await AppDataSource.initialize();
+    dataSource = testDataSource;
+    await dataSource.initialize();
   });
 
   afterAll(async () => {
-    await AppDataSource.destroy();
+    await dataSource.destroy();
   });
 
-  let categoryId: string;
-
   beforeEach(async () => {
-    const category = await AppDataSource.getRepository(Category).save({
+    // Clear the database before each test
+    await dataSource.synchronize(true);
+    
+    // Create a test category
+    const category = await dataSource.getRepository(Category).save({
       name: 'Test Category'
     });
     categoryId = category.id;
@@ -42,7 +48,7 @@ describe('Task API', () => {
 
   describe('GET /api/tasks', () => {
     beforeEach(async () => {
-      await AppDataSource.getRepository(Task).save({
+      await dataSource.getRepository(Task).save({
         title: 'Test Task',
         description: 'Test Description',
         dueDate: new Date('2024-12-31'),
@@ -52,7 +58,6 @@ describe('Task API', () => {
 
     it('should return all tasks', async () => {
       const response = await request(app).get('/api/tasks');
-
       expect(response.status).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body[0]).toHaveProperty('title', 'Test Task');
