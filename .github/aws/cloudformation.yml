@@ -16,14 +16,8 @@ Parameters:
     Type: String
 
 Resources:
-  # Use existing ECR repository
-  ECRRepository:
-    Type: AWS::ECR::Repository
-    DeletionPolicy: Retain
-    Properties:
-      RepositoryName: task-management-api-prod
-      ImageScanningConfiguration:
-        ScanOnPush: true
+  # Remove ECR Repository since it already exists
+  # We'll use the existing one
 
   # Use existing VPC or create new one
   VPC:
