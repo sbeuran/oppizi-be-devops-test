@@ -35,6 +35,7 @@ jobs:
           
       - name: Install dependencies
         run: |
+          rm -f jest.config.js
           npm install
           npm ci
         
