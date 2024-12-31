@@ -1,28 +1,22 @@
 # Dependencies
 node_modules/
-npm-debug.log*
-
-# Build
 dist/
-build/
 
 # Environment
 .env
 .env.local
 .env.*.local
 
+# Logs
+logs
+*.log
+npm-debug.log*
+
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
-
-# Testing
-coverage/
-
-# Logs
-logs/
-*.log
 
 # OS
 .DS_Store

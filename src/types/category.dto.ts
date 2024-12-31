@@ -1,10 +1,9 @@
 export interface CreateCategoryDTO {
   name: string;
-  description?: string;
 }
 
-export interface UpdateCategoryDTO extends Partial<CreateCategoryDTO> {
-  id: string;
+export interface UpdateCategoryDTO {
+  name?: string;
 }
 
 export interface CategoryResponseDTO extends Required<CreateCategoryDTO> {

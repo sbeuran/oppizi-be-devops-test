@@ -11,11 +11,13 @@ export const testDataSource = new DataSource({
   database: process.env.DB_NAME || 'task_management_test',
   entities: [Task, Category],
   synchronize: true,
-  dropSchema: true
+  dropSchema: true,
+  logging: false
 });
 
 beforeAll(async () => {
   await testDataSource.initialize();
+  await testDataSource.synchronize(true);
 });
 
 afterAll(async () => {
@@ -23,17 +25,9 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
-  // Clear tables in correct order to handle foreign key constraints
   const entities = testDataSource.entityMetadatas;
-  const tableNames = entities
-    .map(entity => `"${entity.tableName}"`)
-    .join(', ');
-
-  // Disable foreign key checks, truncate tables, re-enable foreign key checks
-  await testDataSource.query(`
-    DO $$ 
-    BEGIN 
-      EXECUTE 'TRUNCATE TABLE ' || '${tableNames}' || ' CASCADE';
-    END $$;
-  `);
+  for (const entity of entities) {
+    const repository = testDataSource.getRepository(entity.name);
+    await repository.query(`TRUNCATE TABLE "${entity.tableName}" CASCADE`);
+  }
 }); 

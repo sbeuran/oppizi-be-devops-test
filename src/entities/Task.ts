@@ -1,58 +1,30 @@
-import { 
-  Entity, 
-  PrimaryGeneratedColumn, 
-  Column, 
-  CreateDateColumn, 
-  UpdateDateColumn, 
-  ManyToOne,
-  JoinColumn 
-} from "typeorm";
-import { Category } from "./Category";
-
-export type TaskPriority = 'low' | 'medium' | 'high';
-export type TaskStatus = 'todo' | 'in_progress' | 'done';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
+import { Category } from './Category';
 
 @Entity('tasks')
 export class Task {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column()
   title: string;
 
-  @Column({ nullable: true, type: 'text' })
+  @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ nullable: true, type: 'timestamp' })
+  @Column({ name: 'due_date', nullable: true })
   dueDate: Date;
 
-  @Column({
-    type: "enum",
-    enum: ["low", "medium", "high"],
-    default: "medium"
-  })
-  priority: TaskPriority;
+  @Column({ default: 'todo' })
+  status: string;
 
-  @Column({
-    type: "enum",
-    enum: ["todo", "in_progress", "done"],
-    default: "todo"
-  })
-  status: TaskStatus;
-
-  @Column({ nullable: true })
-  categoryId: string;
-
-  @ManyToOne(() => Category, category => category.tasks, { 
-    nullable: true,
-    onDelete: 'SET NULL' 
-  })
-  @JoinColumn({ name: 'categoryId' })
-  category: Category;
-
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  @ManyToOne(() => Category, category => category.tasks, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'category_id' })
+  category: Category;
 } 

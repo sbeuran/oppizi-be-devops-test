@@ -9,15 +9,12 @@ export class Category {
   @Column()
   name: string;
 
-  @Column({ nullable: true, type: 'text' })
-  description: string;
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 
   @OneToMany(() => Task, task => task.category)
   tasks: Task[];
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 } 

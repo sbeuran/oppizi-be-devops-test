@@ -1,21 +1,21 @@
 import { DataSource } from 'typeorm';
 import { Task } from '../entities/Task';
 import { Category } from '../entities/Category';
-import { InitialSchema1703980800000 } from '../migration/1703980800000-InitialSchema';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-export const AppDataSource = new DataSource({
-  type: 'postgres',
-  host: process.env.DB_HOST,
+const config = {
+  type: 'postgres' as const,
+  host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
-  username: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  username: process.env.DB_USERNAME || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres',
+  database: process.env.DB_NAME || 'task_management',
   entities: [Task, Category],
-  migrations: [InitialSchema1703980800000],
-  synchronize: false,
-  logging: process.env.NODE_ENV === 'development',
-  migrationsRun: true
-}); 
+  migrations: [__dirname + '/../migration/*.ts'],
+  synchronize: process.env.NODE_ENV !== 'production',
+  logging: process.env.NODE_ENV === 'development'
+};
+
+export const AppDataSource = new DataSource(config); 

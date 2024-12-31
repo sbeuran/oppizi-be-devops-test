@@ -1,32 +1,30 @@
-import { TaskPriority, TaskStatus } from '../entities/Task';
+import { Category } from '../entities/Category';
+
+export type TaskStatus = 'todo' | 'in_progress' | 'done';
 
 export interface CreateTaskDTO {
   title: string;
   description?: string;
   dueDate?: Date;
-  priority?: TaskPriority;
   status?: TaskStatus;
   categoryId?: string;
 }
 
-export interface UpdateTaskDTO extends Partial<Omit<CreateTaskDTO, 'categoryId'>> {
-  id: string;
+export interface UpdateTaskDTO {
+  title?: string;
+  description?: string;
+  dueDate?: Date;
+  status?: TaskStatus;
   categoryId?: string | null;
 }
 
-export interface TaskResponseDTO extends Required<CreateTaskDTO> {
+export interface TaskResponseDTO {
   id: string;
+  title: string;
+  description: string | null;
+  dueDate: Date | null;
+  status: TaskStatus;
+  category: Category | null;
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface TaskFilterDTO {
-  status?: TaskStatus;
-  priority?: TaskPriority;
-  search?: string;
-  categoryId?: string;
-  page?: number;
-  limit?: number;
-  sortBy?: keyof CreateTaskDTO;
-  sortOrder?: 'ASC' | 'DESC';
 } 

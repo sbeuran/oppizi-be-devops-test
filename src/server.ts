@@ -7,7 +7,7 @@ dotenv.config();
 
 const PORT = process.env.PORT || 3000;
 
-const startServer = async () => {
+async function startServer() {
   try {
     await AppDataSource.initialize();
     console.log('Database connection established');
@@ -21,6 +21,11 @@ const startServer = async () => {
     console.error('Error starting server:', error);
     process.exit(1);
   }
-};
+}
+
+process.on('unhandledRejection', (error) => {
+  console.error('Unhandled rejection:', error);
+  process.exit(1);
+});
 
 startServer(); 
