@@ -65,8 +65,8 @@ jobs:
           PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c 'DROP DATABASE IF EXISTS task_management_test'
           PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c 'CREATE DATABASE task_management_test'
           PGPASSWORD=postgres psql -h localhost -U postgres -d task_management_test -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'
-          # Run tests
-          NODE_ENV=test npm test
+          # Run tests with proper environment variables
+          NODE_ENV=test DB_USERNAME=postgres DB_PASSWORD=postgres DB_NAME=task_management_test DB_HOST=localhost npm test
         env:
           DB_HOST: localhost
           DB_PORT: 5432

@@ -13,11 +13,11 @@ app.use(express.json());
 // Database connection
 export const AppDataSource = new DataSource({
   type: "postgres",
-  host: process.env.DB_HOST,
+  host: process.env.DB_HOST || "localhost",
   port: parseInt(process.env.DB_PORT || "5432"),
-  username: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  username: process.env.NODE_ENV === 'test' ? 'postgres' : process.env.DB_USERNAME,
+  password: process.env.NODE_ENV === 'test' ? 'postgres' : process.env.DB_PASSWORD,
+  database: process.env.NODE_ENV === 'test' ? 'task_management_test' : process.env.DB_NAME,
   entities: [Category, Task],
   synchronize: true,
   logging: process.env.NODE_ENV !== 'production',
@@ -28,20 +28,21 @@ let routesInitialized = false;
 
 // Initialize database and routes
 export const initializeApp = async () => {
-  if (!AppDataSource.isInitialized) {
-    await AppDataSource.initialize();
-    console.log("Database connection initialized");
-  }
+  try {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+      console.log("Database connection initialized");
+    }
 
-  if (!routesInitialized) {
-    // Set up API routes after database is initialized
+    // Set up API routes
     app.use('/api/tasks', getTaskRouter(AppDataSource));
     app.use('/api/categories', getCategoryRouter(AppDataSource));
-    routesInitialized = true;
-    console.log("Routes initialized");
+    
+    return app;
+  } catch (error) {
+    console.error('Failed to initialize app:', error);
+    throw error;
   }
-
-  return app;
 };
 
 // Health check route
