@@ -24,7 +24,7 @@ export class Task {
   @UpdateDateColumn()
   updatedAt!: Date;
 
-  @ManyToOne(() => Category, category => category.tasks, { onDelete: 'SET NULL' })
+  @ManyToOne(() => Category, (category: Category) => category.tasks, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'category_id' })
   category!: Category;
 } 

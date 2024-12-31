@@ -15,6 +15,6 @@ export class Category {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt!: Date;
 
-  @OneToMany(() => Task, task => task.category)
+  @OneToMany(() => Task, (task: Task) => task.category)
   tasks!: Task[];
 } 
