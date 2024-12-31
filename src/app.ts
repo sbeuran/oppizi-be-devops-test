@@ -6,24 +6,6 @@ import { Task } from './entities/Task';
 import { getTaskRouter } from './routes/task.routes';
 import { getCategoryRouter } from './routes/category.routes';
 
-// Initialize database connection with retries
-const initializeDB = async (retries = 5, delay = 5000) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      await AppDataSource.initialize();
-      console.log("Database connection initialized");
-      return;
-    } catch (error) {
-      console.error(`Database connection attempt ${i + 1} failed:`, error);
-      if (i < retries - 1) {
-        console.log(`Retrying in ${delay/1000} seconds...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-  throw new Error("Failed to initialize database connection after multiple attempts");
-};
-
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -41,6 +23,29 @@ export const AppDataSource = new DataSource({
   logging: process.env.NODE_ENV !== 'production',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
+
+// Initialize database connection with retries
+const initializeDB = async (retries = 5, delay = 5000) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await AppDataSource.initialize();
+      console.log("Database connection initialized");
+      
+      // Set up routes after database is initialized
+      app.use('/api/tasks', getTaskRouter(AppDataSource));
+      app.use('/api/categories', getCategoryRouter(AppDataSource));
+      
+      return;
+    } catch (error) {
+      console.error(`Database connection attempt ${i + 1} failed:`, error);
+      if (i < retries - 1) {
+        console.log(`Retrying in ${delay/1000} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  throw new Error("Failed to initialize database connection after multiple attempts");
+};
 
 // Only initialize AppDataSource if not in test environment
 if (process.env.NODE_ENV !== 'test') {
@@ -82,10 +87,6 @@ const healthCheck: RequestHandler = (req: Request, res: Response, next: NextFunc
 };
 
 app.get('/health', healthCheck);
-
-// API routes
-app.use('/api/tasks', getTaskRouter(AppDataSource));
-app.use('/api/categories', getCategoryRouter(AppDataSource));
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
