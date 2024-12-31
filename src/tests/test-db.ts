@@ -10,33 +10,16 @@ export const testDataSource = new DataSource({
   password: process.env.DB_PASSWORD || "postgres",
   database: process.env.DB_NAME || "task_management_test",
   entities: [Category, Task],
-  synchronize: false, // Don't auto-sync on connection
+  synchronize: true,
   dropSchema: true,
   logging: false
 });
 
-// Initialize function with retries
-export const initializeTestDB = async (retries = 5): Promise<DataSource> => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      if (!testDataSource.isInitialized) {
-        await testDataSource.initialize();
-        
-        // Drop all tables
-        await testDataSource.dropDatabase();
-        
-        // Create schema
-        await testDataSource.synchronize();
-        
-        // Create uuid extension
-        await testDataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
-      }
-      return testDataSource;
-    } catch (error) {
-      console.error(`Test DB initialization attempt ${i + 1} failed:`, error);
-      if (i === retries - 1) throw error;
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
+export const initializeTestDB = async (): Promise<DataSource> => {
+  if (!testDataSource.isInitialized) {
+    await testDataSource.initialize();
+    await testDataSource.synchronize(true);
+    await testDataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
   }
-  throw new Error('Failed to initialize test database');
+  return testDataSource;
 }; 

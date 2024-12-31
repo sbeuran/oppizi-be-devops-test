@@ -24,57 +24,27 @@ export const AppDataSource = new DataSource({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-let isInitialized = false;
+// Set up routes immediately
+app.use('/api/tasks', getTaskRouter(AppDataSource));
+app.use('/api/categories', getCategoryRouter(AppDataSource));
 
-// Initialize database and set up routes
+// Initialize database
 export const initializeApp = async () => {
-  if (!isInitialized) {
-    if (!AppDataSource.isInitialized) {
-      await AppDataSource.initialize();
-      console.log("Database connection initialized");
-    }
-    
-    // Set up API routes
-    app.use('/api/tasks', getTaskRouter(AppDataSource));
-    app.use('/api/categories', getCategoryRouter(AppDataSource));
-    
-    isInitialized = true;
+  if (!AppDataSource.isInitialized) {
+    await AppDataSource.initialize();
+    console.log("Database connection initialized");
   }
   return app;
 };
 
 // Health check route
-const healthCheck: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
-  try {
-    const isConnected = AppDataSource.isInitialized;
-    if (!isConnected) {
-      res.status(500).json({ 
-        status: 'error',
-        message: 'Database connection not initialized'
-      });
-      return;
-    }
-    res.status(200).json({ 
-      status: 'ok',
-      database: 'connected'
-    });
-  } catch (error) {
-    console.error('Health check failed:', error);
-    if (error instanceof Error) {
-      res.status(500).json({ 
-        status: 'error',
-        message: error.message 
-      });
-    } else {
-      res.status(500).json({ 
-        status: 'error',
-        message: 'An unknown error occurred' 
-      });
-    }
-  }
-};
-
-app.get('/health', healthCheck);
+app.get('/health', (req: Request, res: Response) => {
+  const isConnected = AppDataSource.isInitialized;
+  res.status(isConnected ? 200 : 500).json({ 
+    status: isConnected ? 'ok' : 'error',
+    database: isConnected ? 'connected' : 'disconnected'
+  });
+});
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
