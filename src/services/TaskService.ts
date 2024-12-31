@@ -1,89 +1,102 @@
 import { Repository } from 'typeorm';
 import { Task } from '../entities/Task';
-import { CreateTaskDTO, UpdateTaskDTO, TaskFilterDTO } from '../types/task.dto';
+import { CreateTaskDTO, UpdateTaskDTO, TaskStatus } from '../types/task.dto';
 import { AppError } from '../middlewares/errorHandler';
 
 export class TaskService {
   constructor(private taskRepository: Repository<Task>) {}
 
-  async createTask(createTaskDto: CreateTaskDTO): Promise<Task> {
-    if (!createTaskDto.title) {
-      throw new AppError(400, 'Title is required', 'VALIDATION_ERROR');
+  async createTask(data: CreateTaskDTO): Promise<Task> {
+    if (!data.title?.trim()) {
+      throw new AppError('Title is required', 400);
     }
 
-    const task = this.taskRepository.create(createTaskDto);
-    return await this.taskRepository.save(task);
+    try {
+      if (data.status && !['todo', 'in_progress', 'done'].includes(data.status)) {
+        throw new AppError('Invalid status value', 400);
+      }
+
+      const task = this.taskRepository.create({
+        title: data.title.trim(),
+        description: data.description?.trim(),
+        dueDate: data.dueDate,
+        status: data.status || 'todo',
+        category: data.categoryId ? { id: data.categoryId } : null
+      });
+
+      await this.taskRepository.save(task);
+      return this.getTaskById(task.id);
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError('Error creating task', 500);
+    }
   }
 
-  async getTasks(filterDto?: TaskFilterDTO): Promise<[Task[], number]> {
-    const query = this.taskRepository.createQueryBuilder('task')
-      .leftJoinAndSelect('task.category', 'category');
-
-    if (filterDto) {
-      const { status, priority, search, categoryId, page, limit, sortBy, sortOrder } = filterDto;
-
-      if (status) {
-        query.andWhere('task.status = :status', { status });
-      }
-
-      if (priority) {
-        query.andWhere('task.priority = :priority', { priority });
-      }
-
-      if (categoryId) {
-        query.andWhere('task.categoryId = :categoryId', { categoryId });
-      }
-
-      if (search) {
-        query.andWhere(
-          '(LOWER(task.title) LIKE LOWER(:search) OR LOWER(task.description) LIKE LOWER(:search))',
-          { search: `%${search}%` }
-        );
-      }
-
-      if (sortBy) {
-        query.orderBy(`task.${sortBy}`, sortOrder || 'ASC');
-      }
-
-      if (page && limit) {
-        query.skip((page - 1) * limit).take(limit);
-      }
+  async getTasks(): Promise<Task[]> {
+    try {
+      return await this.taskRepository.find({
+        relations: ['category'],
+        order: { createdAt: 'DESC' }
+      });
+    } catch (error) {
+      throw new AppError('Error fetching tasks', 500);
     }
-
-    return await query.getManyAndCount();
   }
 
-  async getTaskById(id: string): Promise<Task | null> {
-    const task = await this.taskRepository.findOne({
-      where: { id },
-      relations: ['category']
-    });
+  async getTaskById(id: string): Promise<Task> {
+    try {
+      const task = await this.taskRepository.findOne({
+        where: { id },
+        relations: ['category']
+      });
 
-    if (!task) {
-      throw new AppError(404, 'Task not found', 'NOT_FOUND');
+      if (!task) {
+        throw new AppError('Task not found', 404);
+      }
+
+      return task;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError('Error fetching task', 500);
     }
-
-    return task;
   }
 
-  async updateTask(updateTaskDto: UpdateTaskDTO): Promise<Task> {
-    const task = await this.taskRepository.findOne({
-      where: { id: updateTaskDto.id }
-    });
+  async updateTask(id: string, data: UpdateTaskDTO): Promise<Task> {
+    const task = await this.getTaskById(id);
 
-    if (!task) {
-      throw new AppError(404, 'Task not found', 'NOT_FOUND');
+    if (data.title !== undefined && !data.title.trim()) {
+      throw new AppError('Title cannot be empty', 400);
     }
 
-    Object.assign(task, updateTaskDto);
-    return await this.taskRepository.save(task);
+    if (data.status && !['todo', 'in_progress', 'done'].includes(data.status)) {
+      throw new AppError('Invalid status value', 400);
+    }
+
+    try {
+      const updateData = {
+        ...task,
+        title: data.title?.trim() ?? task.title,
+        description: data.description?.trim() ?? task.description,
+        dueDate: data.dueDate ?? task.dueDate,
+        status: data.status ?? task.status,
+        category: data.categoryId === null ? null : 
+                 data.categoryId ? { id: data.categoryId } : 
+                 task.category
+      };
+
+      await this.taskRepository.save(updateData);
+      return this.getTaskById(id);
+    } catch (error) {
+      throw new AppError('Error updating task', 500);
+    }
   }
 
-  async deleteTask(id: string): Promise<boolean> {
-    const result = await this.taskRepository.delete(id);
-    if (result.affected === 0) {
-      throw new AppError(404, 'Task not found', 'NOT_FOUND');
+  async deleteTask(id: string): Promise<void> {
+    const task = await this.getTaskById(id);
+    try {
+      await this.taskRepository.remove(task);
+    } catch (error) {
+      throw new AppError('Error deleting task', 500);
     }
-    return true;
   }
 } 
