@@ -17,14 +17,16 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-1
 
-      - name: Check and Delete Failed Stack
+      - name: Delete Existing Stack
         run: |
-          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name task-management-api --query 'Stacks[0].StackStatus' --output text 2>/dev/null || echo "STACK_NOT_FOUND")
-          if [ "$STACK_STATUS" = "ROLLBACK_COMPLETE" ]; then
-            echo "Deleting failed stack..."
+          echo "Checking if stack exists..."
+          if aws cloudformation describe-stacks --stack-name task-management-api >/dev/null 2>&1; then
+            echo "Deleting existing stack..."
             aws cloudformation delete-stack --stack-name task-management-api
             echo "Waiting for stack deletion to complete..."
             aws cloudformation wait stack-delete-complete --stack-name task-management-api
+          else
+            echo "No existing stack found."
           fi
 
       - name: Deploy to AWS CloudFormation
