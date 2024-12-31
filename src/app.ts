@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response, NextFunction, RequestHandler } from 'express';
 import cors from 'cors';
 import { DataSource } from 'typeorm';
 import { Category } from './entities/Category';
@@ -49,7 +49,7 @@ initializeDB().catch(error => {
 });
 
 // Health check route
-app.get('/health', (req: Request, res: Response) => {
+const healthCheck: RequestHandler = (req: Request, res: Response) => {
   try {
     const isConnected = AppDataSource.isInitialized;
     if (!isConnected) {
@@ -75,7 +75,9 @@ app.get('/health', (req: Request, res: Response) => {
       message: 'An unknown error occurred' 
     });
   }
-});
+};
+
+app.get('/health', healthCheck);
 
 // API routes
 app.use('/api/tasks', getTaskRouter(AppDataSource));
