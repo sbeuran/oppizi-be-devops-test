@@ -1,4 +1,4 @@
-import express, { Express, Request, Response, NextFunction } from 'express';
+import express, { Express, Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import { DataSource } from 'typeorm';
 import taskRoutes from './routes/task.routes';
@@ -23,8 +23,8 @@ export class App {
     this.app.use('/api/tasks', taskRoutes(this.dataSource));
     this.app.use('/api/categories', categoryRoutes(this.dataSource));
     
-    // Fix: Add type annotation for error handler middleware
-    this.app.use((err: Error, req: Request, res: Response, next: NextFunction) => errorHandler(err, req, res, next));
+    // Fix: Cast errorHandler as ErrorRequestHandler
+    this.app.use(errorHandler as ErrorRequestHandler);
   }
 }
 
