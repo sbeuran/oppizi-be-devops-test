@@ -61,13 +61,18 @@ jobs:
         run: |
           # Wait for PostgreSQL to be ready
           sleep 10
+          
           # Create test database and extension
           PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c 'DROP DATABASE IF EXISTS task_management_test'
           PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c 'CREATE DATABASE task_management_test'
           PGPASSWORD=postgres psql -h localhost -U postgres -d task_management_test -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'
-          # Run tests with proper environment variables
-          NODE_ENV=test DB_USERNAME=postgres DB_PASSWORD=postgres DB_NAME=task_management_test DB_HOST=localhost npm test
+          
+          # Run tests with explicit database URL
+          DATABASE_URL=postgresql://postgres:postgres@localhost:5432/task_management_test npm test
         env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: task_management_test
           DB_HOST: localhost
           DB_PORT: 5432
           DB_USERNAME: postgres
