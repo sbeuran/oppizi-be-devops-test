@@ -139,3 +139,22 @@ jobs:
             aws cloudformation describe-stack-events --stack-name task-management-api
             exit 1
           } 
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: |
+          npm install
+          npm install --save-dev @types/node @types/express @types/cors @types/jest @types/supertest
+          npm install express cors typeorm dotenv
+          
+      - name: Build
+        run: npm run build 
