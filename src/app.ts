@@ -24,17 +24,22 @@ export const AppDataSource = new DataSource({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
+let isInitialized = false;
+
 // Initialize database and set up routes
 export const initializeApp = async () => {
-  if (!AppDataSource.isInitialized) {
-    await AppDataSource.initialize();
-    console.log("Database connection initialized");
+  if (!isInitialized) {
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+      console.log("Database connection initialized");
+    }
+    
+    // Set up API routes
+    app.use('/api/tasks', getTaskRouter(AppDataSource));
+    app.use('/api/categories', getCategoryRouter(AppDataSource));
+    
+    isInitialized = true;
   }
-  
-  // Set up API routes
-  app.use('/api/tasks', getTaskRouter(AppDataSource));
-  app.use('/api/categories', getCategoryRouter(AppDataSource));
-  
   return app;
 };
 

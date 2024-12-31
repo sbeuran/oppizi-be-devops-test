@@ -61,10 +61,12 @@ jobs:
         run: |
           # Wait for PostgreSQL to be ready
           sleep 10
-          # Create uuid extension
+          # Create test database and extension
+          PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c 'DROP DATABASE IF EXISTS task_management_test'
+          PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c 'CREATE DATABASE task_management_test'
           PGPASSWORD=postgres psql -h localhost -U postgres -d task_management_test -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'
           # Run tests
-          npm test
+          NODE_ENV=test npm test
         env:
           DB_HOST: localhost
           DB_PORT: 5432
