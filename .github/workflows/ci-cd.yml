@@ -116,6 +116,21 @@ jobs:
 
       - name: Deploy to AWS CloudFormation
         run: |
+          # Get default VPC ID
+          VPC_ID=$(aws ec2 describe-vpcs \
+            --filters "Name=isDefault,Values=true" \
+            --query 'Vpcs[0].VpcId' \
+            --output text)
+          
+          # Get public subnets from default VPC
+          SUBNET_IDS=$(aws ec2 describe-subnets \
+            --filters "Name=vpc-id,Values=$VPC_ID" "Name=map-public-ip-on-launch,Values=true" \
+            --query 'Subnets[0:2].SubnetId' \
+            --output text)
+          
+          # Convert space-separated subnet IDs to array
+          read -r SUBNET1_ID SUBNET2_ID <<< "$SUBNET_IDS"
+          
           aws cloudformation deploy \
             --template-file .github/aws/cloudformation.yml \
             --stack-name task-management-api \
@@ -124,6 +139,9 @@ jobs:
               DBUsername=${{ secrets.DB_USERNAME }} \
               DBPassword=${{ secrets.DB_PASSWORD }} \
               DBName=${{ secrets.DB_NAME }} \
+              VpcId=$VPC_ID \
+              PublicSubnet1Id=$SUBNET1_ID \
+              PublicSubnet2Id=$SUBNET2_ID \
             --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset
 
