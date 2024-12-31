@@ -97,11 +97,6 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Create ECR repository if not exists
-        run: |
-          aws ecr describe-repositories --repository-names task-management-api-prod || \
-          aws ecr create-repository --repository-name task-management-api-prod
-
       - name: Build and push Docker image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -109,6 +104,15 @@ jobs:
         run: |
           docker build -t $ECR_REGISTRY/task-management-api-prod:$IMAGE_TAG .
           docker push $ECR_REGISTRY/task-management-api-prod:$IMAGE_TAG
+
+      - name: Delete existing stack if exists
+        run: |
+          if aws cloudformation describe-stacks --stack-name task-management-api 2>/dev/null; then
+            echo "Deleting existing stack..."
+            aws cloudformation delete-stack --stack-name task-management-api
+            echo "Waiting for stack deletion..."
+            aws cloudformation wait stack-delete-complete --stack-name task-management-api
+          fi
 
       - name: Deploy to AWS CloudFormation
         run: |
