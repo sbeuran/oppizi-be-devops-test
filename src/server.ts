@@ -1,31 +1,22 @@
-import 'reflect-metadata';
-import App from './app';
-import { AppDataSource } from './config/database';
-import dotenv from 'dotenv';
+import app from './app';
+import { AppDataSource } from './app';
 
-dotenv.config();
+const port = process.env.PORT || 3000;
 
-const PORT = process.env.PORT || 3000;
-
-async function startServer() {
+const startServer = async () => {
   try {
-    await AppDataSource.initialize();
-    console.log('Database connection established');
-
-    const application = new App(AppDataSource);
+    // Wait for database connection
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+    }
     
-    application.app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+    app.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
     });
   } catch (error) {
     console.error('Error starting server:', error);
     process.exit(1);
   }
-}
-
-process.on('unhandledRejection', (error) => {
-  console.error('Unhandled rejection:', error);
-  process.exit(1);
-});
+};
 
 startServer(); 

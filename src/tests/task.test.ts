@@ -1,17 +1,23 @@
 import request from 'supertest';
-import App from '../app';
-import { testDataSource } from './setup';
+import { DataSource } from 'typeorm';
+import app from '../app';
+import { AppDataSource } from '../app';
 import { Task } from '../entities/Task';
 import { Category } from '../entities/Category';
 
-const application = new App(testDataSource);
-const app = application.app;
-
 describe('Task API', () => {
+  beforeAll(async () => {
+    await AppDataSource.initialize();
+  });
+
+  afterAll(async () => {
+    await AppDataSource.destroy();
+  });
+
   let categoryId: string;
 
   beforeEach(async () => {
-    const category = await testDataSource.getRepository(Category).save({
+    const category = await AppDataSource.getRepository(Category).save({
       name: 'Test Category'
     });
     categoryId = category.id;
@@ -36,7 +42,7 @@ describe('Task API', () => {
 
   describe('GET /api/tasks', () => {
     beforeEach(async () => {
-      await testDataSource.getRepository(Task).save({
+      await AppDataSource.getRepository(Task).save({
         title: 'Test Task',
         description: 'Test Description',
         dueDate: new Date('2024-12-31'),

@@ -1,12 +1,18 @@
 import request from 'supertest';
-import App from '../app';
-import { testDataSource } from './setup';
+import { DataSource } from 'typeorm';
+import app from '../app';
+import { AppDataSource } from '../app';
 import { Category } from '../entities/Category';
 
-const application = new App(testDataSource);
-const app = application.app;  // Get Express app instance
-
 describe('Category API', () => {
+  beforeAll(async () => {
+    await AppDataSource.initialize();
+  });
+
+  afterAll(async () => {
+    await AppDataSource.destroy();
+  });
+
   describe('POST /api/categories', () => {
     it('should create a new category', async () => {
       const response = await request(app)
@@ -23,7 +29,7 @@ describe('Category API', () => {
 
   describe('GET /api/categories', () => {
     beforeEach(async () => {
-      await testDataSource.getRepository(Category).save({
+      await AppDataSource.getRepository(Category).save({
         name: 'Test Category'
       });
     });

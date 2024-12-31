@@ -1,10 +1,10 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { DataSource } from 'typeorm';
 import { Category } from './entities/Category';
 import { Task } from './entities/Task';
-import taskRoutes from './routes/task.routes';
-import categoryRoutes from './routes/category.routes';
+import { getTaskRouter } from './routes/task.routes';
+import { getCategoryRouter } from './routes/category.routes';
 
 const app = express();
 app.use(cors());
@@ -48,9 +48,8 @@ initializeDB().catch(error => {
 });
 
 // Health check route
-app.get('/health', async (req, res) => {
+app.get('/health', async (req: Request, res: Response) => {
   try {
-    // Check database connection
     const isConnected = AppDataSource.isInitialized;
     if (!isConnected) {
       return res.status(500).json({ 
@@ -58,26 +57,32 @@ app.get('/health', async (req, res) => {
         message: 'Database connection not initialized'
       });
     }
-
     res.status(200).json({ 
       status: 'ok',
       database: 'connected'
     });
   } catch (error) {
     console.error('Health check failed:', error);
-    res.status(500).json({ 
-      status: 'error',
-      message: error.message 
-    });
+    if (error instanceof Error) {
+      res.status(500).json({ 
+        status: 'error',
+        message: error.message 
+      });
+    } else {
+      res.status(500).json({ 
+        status: 'error',
+        message: 'An unknown error occurred' 
+      });
+    }
   }
 });
 
 // API routes
-app.use('/api/tasks', taskRoutes);
-app.use('/api/categories', categoryRoutes);
+app.use('/api/tasks', getTaskRouter(AppDataSource));
+app.use('/api/categories', getCategoryRouter(AppDataSource));
 
 // Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
