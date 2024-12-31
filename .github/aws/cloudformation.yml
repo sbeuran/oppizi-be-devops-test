@@ -25,6 +25,43 @@ Parameters:
     Description: Select second public subnet
 
 Resources:
+  # Database Resources
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for Task Management API database
+      SubnetIds: 
+        - !Ref PublicSubnet1Id
+        - !Ref PublicSubnet2Id
+
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS instance
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref ContainerSecurityGroup
+
+  Database:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName: !Ref DBName
+      Engine: postgres
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: '20'
+      PubliclyAccessible: true
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups: 
+        - !Ref DatabaseSecurityGroup
+      BackupRetentionPeriod: 7
+      Port: 5432
+    DeletionPolicy: Snapshot
+
   # Security Groups
   ContainerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -54,6 +91,19 @@ Resources:
           Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/task-management-api-prod:latest
           PortMappings:
             - ContainerPort: 3000
+          Environment:
+            - Name: DB_HOST
+              Value: !GetAtt Database.Endpoint.Address
+            - Name: DB_PORT
+              Value: !GetAtt Database.Endpoint.Port
+            - Name: DB_USERNAME
+              Value: !Ref DBUsername
+            - Name: DB_PASSWORD
+              Value: !Ref DBPassword
+            - Name: DB_NAME
+              Value: !Ref DBName
+            - Name: NODE_ENV
+              Value: production
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -63,6 +113,7 @@ Resources:
 
   Service:
     Type: AWS::ECS::Service
+    DependsOn: Database
     Properties:
       ServiceName: task-management-api
       Cluster: !Sub ${AWS::StackName}-${Environment}-${AWS::Region}
@@ -79,6 +130,12 @@ Resources:
             - !Ref ContainerSecurityGroup
 
 Outputs:
+  DatabaseEndpoint:
+    Description: Database endpoint
+    Value: !GetAtt Database.Endpoint.Address
+  DatabasePort:
+    Description: Database port
+    Value: !GetAtt Database.Endpoint.Port
   ContainerSecurityGroup:
     Description: Security Group for the containers
     Value: !Ref ContainerSecurityGroup
