@@ -16,48 +16,7 @@ Parameters:
     Type: String
 
 Resources:
-  # IAM Roles with unique names and timestamps to avoid conflicts
-  TaskRole:
-    Type: AWS::IAM::Role
-    DeletionPolicy: Retain
-    Properties:
-      RoleName: !Sub ${AWS::StackName}-TaskRole-${AWS::Region}-${AWS::AccountId}
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-
-  ExecutionRole:
-    Type: AWS::IAM::Role
-    DeletionPolicy: Retain
-    Properties:
-      RoleName: !Sub ${AWS::StackName}-ExecRole-${AWS::Region}-${AWS::AccountId}
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: ECRAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - ecr:GetAuthorizationToken
-                  - ecr:BatchCheckLayerAvailability
-                  - ecr:GetDownloadUrlForLayer
-                  - ecr:BatchGetImage
-                Resource: '*'
-
-  # Network Resources with unique names
+  # Network Resources
   VPC:
     Type: AWS::EC2::VPC
     DeletionPolicy: Retain
@@ -77,22 +36,28 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName}-igw-${AWS::Region}
 
-  # Log Group with unique name
-  LogGroup:
-    Type: AWS::Logs::LogGroup
-    DeletionPolicy: Retain
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
     Properties:
-      LogGroupName: !Sub /ecs/${AWS::StackName}-${Environment}
-      RetentionInDays: 7
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
 
-  # ECS Cluster with unique name
-  TaskManagementCluster:
-    Type: AWS::ECS::Cluster
-    DeletionPolicy: Retain
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
     Properties:
-      ClusterName: !Sub ${AWS::StackName}-${Environment}-${AWS::Region}
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-public-rt
 
-  # Public Subnets
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -115,46 +80,17 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName}-public-2
 
-  # ECS Service
-  TaskDefinition:
-    Type: AWS::ECS::TaskDefinition
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      Family: !Sub ${AWS::StackName}-task
-      Cpu: '256'
-      Memory: '512'
-      NetworkMode: awsvpc
-      RequiresCompatibilities:
-        - FARGATE
-      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
-      TaskRoleArn: !GetAtt TaskRole.Arn
-      ContainerDefinitions:
-        - Name: api
-          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/task-management-api-prod:latest
-          PortMappings:
-            - ContainerPort: 3000
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-group: !Ref LogGroup
-              awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: ecs
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
 
-  Service:
-    Type: AWS::ECS::Service
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      ServiceName: task-management-api
-      Cluster: !Ref TaskManagementCluster
-      TaskDefinition: !Ref TaskDefinition
-      DesiredCount: 1
-      LaunchType: FARGATE
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          AssignPublicIp: ENABLED
-          Subnets:
-            - !Ref PublicSubnet1
-            - !Ref PublicSubnet2
-          SecurityGroups:
-            - !Ref ContainerSecurityGroup
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
 
   # Security Groups
   ContainerSecurityGroup:
@@ -168,19 +104,61 @@ Resources:
           ToPort: 3000
           CidrIp: 0.0.0.0/0
 
+  # ECS Resources
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${AWS::StackName}-task
+      Cpu: '256'
+      Memory: '512'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-ExecRole-${AWS::Region}-${AWS::AccountId}
+      TaskRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-TaskRole-${AWS::Region}-${AWS::AccountId}
+      ContainerDefinitions:
+        - Name: api
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/task-management-api-prod:latest
+          PortMappings:
+            - ContainerPort: 3000
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Sub /ecs/${AWS::StackName}-${Environment}
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn: PublicRoute
+    Properties:
+      ServiceName: task-management-api
+      Cluster: !Sub ${AWS::StackName}-${Environment}-${AWS::Region}
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - !Ref PublicSubnet1
+            - !Ref PublicSubnet2
+          SecurityGroups:
+            - !Ref ContainerSecurityGroup
+
 Outputs:
-  ClusterName:
-    Description: ECS Cluster Name
-    Value: !Ref TaskManagementCluster
-  ExecutionRoleArn:
-    Description: ECS Task Execution Role ARN
-    Value: !GetAtt ExecutionRole.Arn
-  TaskRoleArn:
-    Description: ECS Task Role ARN
-    Value: !GetAtt TaskRole.Arn
   VpcId:
     Description: VPC ID
     Value: !Ref VPC
-  ServiceEndpoint:
-    Description: Public endpoint for the API service
-    Value: !Sub ${Service.Name}.${AWS::Region}.amazonaws.com
+  PublicSubnet1:
+    Description: Public Subnet 1
+    Value: !Ref PublicSubnet1
+  PublicSubnet2:
+    Description: Public Subnet 2
+    Value: !Ref PublicSubnet2
+  ContainerSecurityGroup:
+    Description: Security Group for the containers
+    Value: !Ref ContainerSecurityGroup
+  ServiceName:
+    Description: Name of the ECS Service
+    Value: !Ref Service
