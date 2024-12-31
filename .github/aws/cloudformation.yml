@@ -16,51 +16,12 @@ Parameters:
     Type: String
 
 Resources:
-  # Remove ECR Repository since it already exists
-  # We'll use the existing one
-
-  # Use existing VPC or create new one
-  VPC:
-    Type: AWS::EC2::VPC
-    DeletionPolicy: Retain
-    Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
-      Tags:
-        - Key: Name
-          Value: task-management-prod-vpc
-
-  # Use existing Internet Gateway or create new one
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-    DeletionPolicy: Retain
-    Properties:
-      Tags:
-        - Key: Name
-          Value: task-management-prod-igw
-
-  # Use existing Log Group or create new one
-  LogGroup:
-    Type: AWS::Logs::LogGroup
-    DeletionPolicy: Retain
-    Properties:
-      LogGroupName: /ecs/task-management-api-prod
-      RetentionInDays: 7
-
-  # Use existing ECS Cluster or create new one
-  TaskManagementCluster:
-    Type: AWS::ECS::Cluster
-    DeletionPolicy: Retain
-    Properties:
-      ClusterName: task-management-prod
-
-  # IAM Roles with unique names
+  # IAM Roles with unique names and timestamps to avoid conflicts
   TaskRole:
     Type: AWS::IAM::Role
     DeletionPolicy: Retain
     Properties:
-      RoleName: !Sub ${AWS::StackName}-TaskRole-${AWS::Region}
+      RoleName: !Sub ${AWS::StackName}-TaskRole-${AWS::Region}-${AWS::AccountId}
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -73,7 +34,7 @@ Resources:
     Type: AWS::IAM::Role
     DeletionPolicy: Retain
     Properties:
-      RoleName: !Sub ${AWS::StackName}-ExecRole-${AWS::Region}
+      RoleName: !Sub ${AWS::StackName}-ExecRole-${AWS::Region}-${AWS::AccountId}
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
       AssumeRolePolicyDocument:
@@ -96,6 +57,41 @@ Resources:
                   - ecr:BatchGetImage
                 Resource: '*'
 
+  # Network Resources with unique names
+  VPC:
+    Type: AWS::EC2::VPC
+    DeletionPolicy: Retain
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-vpc-${AWS::Region}
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    DeletionPolicy: Retain
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-igw-${AWS::Region}
+
+  # Log Group with unique name
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    Properties:
+      LogGroupName: !Sub /ecs/${AWS::StackName}-${Environment}
+      RetentionInDays: 7
+
+  # ECS Cluster with unique name
+  TaskManagementCluster:
+    Type: AWS::ECS::Cluster
+    DeletionPolicy: Retain
+    Properties:
+      ClusterName: !Sub ${AWS::StackName}-${Environment}-${AWS::Region}
+
 Outputs:
   ClusterName:
     Description: ECS Cluster Name
@@ -106,3 +102,6 @@ Outputs:
   TaskRoleArn:
     Description: ECS Task Role ARN
     Value: !GetAtt TaskRole.Arn
+  VpcId:
+    Description: VPC ID
+    Value: !Ref VPC
