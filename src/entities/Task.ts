@@ -1,30 +1,30 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Category } from './Category';
 
 @Entity('tasks')
 export class Task {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column()
-  title: string;
+  title!: string;
 
-  @Column({ type: 'text', nullable: true })
-  description: string;
+  @Column({ nullable: true })
+  description!: string;
 
   @Column({ name: 'due_date', nullable: true })
-  dueDate: Date;
+  dueDate!: Date;
 
   @Column({ default: 'todo' })
-  status: string;
+  status!: string;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  @CreateDateColumn()
+  createdAt!: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  @UpdateDateColumn()
+  updatedAt!: Date;
 
   @ManyToOne(() => Category, category => category.tasks, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'category_id' })
-  category: Category;
+  category!: Category;
 } 
