@@ -18,34 +18,37 @@ export const errorHandler: ErrorRequestHandler = (
   _req: Request,
   res: Response,
   _next: NextFunction
-) => {
+): void => {
   console.error(err);
 
   if (err instanceof AppError) {
-    return res.status(err.statusCode).json({
+    res.status(err.statusCode).json({
       status: 'error',
       code: err.errorCode,
       message: err.message
     });
+    return;
   }
 
   if (err instanceof QueryFailedError) {
-    return res.status(400).json({
+    res.status(400).json({
       status: 'error',
       code: 'DATABASE_ERROR',
       message: 'Database operation failed'
     });
+    return;
   }
 
   if (err instanceof EntityNotFoundError) {
-    return res.status(404).json({
+    res.status(404).json({
       status: 'error',
       code: 'NOT_FOUND',
       message: 'Entity not found'
     });
+    return;
   }
 
-  return res.status(500).json({
+  res.status(500).json({
     status: 'error',
     code: 'INTERNAL_SERVER_ERROR',
     message: process.env.NODE_ENV === 'production' 
