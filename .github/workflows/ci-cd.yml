@@ -67,12 +67,9 @@ jobs:
           PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c 'CREATE DATABASE task_management_test'
           PGPASSWORD=postgres psql -h localhost -U postgres -d task_management_test -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'
           
-          # Run tests with explicit database URL
-          DATABASE_URL=postgresql://postgres:postgres@localhost:5432/task_management_test npm test
+          # Run tests
+          npm test
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: task_management_test
           DB_HOST: localhost
           DB_PORT: 5432
           DB_USERNAME: postgres
