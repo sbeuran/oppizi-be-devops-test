@@ -51,13 +51,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18.x'
+          node-version: '18'
           cache: 'npm'
           
       - name: Install dependencies
-        run: |
-          npm install
-          npm ci
+        run: npm ci
         
       - name: Run tests
         run: npm test
@@ -90,10 +88,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: |
-          npm install
-          npm install --save-dev @types/node @types/express @types/cors @types/jest @types/supertest
-          npm install express cors typeorm dotenv
+        run: npm ci
 
       - name: Build TypeScript
         run: npm run build
@@ -110,21 +105,8 @@ jobs:
           docker build -t $ECR_REGISTRY/task-management-api-prod:$IMAGE_TAG .
           docker push $ECR_REGISTRY/task-management-api-prod:$IMAGE_TAG
 
-      - name: Delete Existing Stack
-        run: |
-          echo "Checking if stack exists..."
-          if aws cloudformation describe-stacks --stack-name task-management-api >/dev/null 2>&1; then
-            echo "Deleting existing stack..."
-            aws cloudformation delete-stack --stack-name task-management-api
-            echo "Waiting for stack deletion to complete..."
-            aws cloudformation wait stack-delete-complete --stack-name task-management-api
-          else
-            echo "No existing stack found."
-          fi
-
       - name: Deploy to AWS CloudFormation
         run: |
-          echo "Starting deployment..."
           aws cloudformation deploy \
             --template-file .github/aws/cloudformation.yml \
             --stack-name task-management-api \
@@ -136,57 +118,9 @@ jobs:
             --capabilities CAPABILITY_IAM \
             --no-fail-on-empty-changeset
 
-      - name: Check ECS Service Status
-        if: success()
+      - name: Check deployment status
         run: |
-          echo "Checking ECS service status..."
-          CLUSTER_NAME="task-management-prod"
-          SERVICE_NAME="task-management-api-prod"
-          
-          aws ecs describe-services \
-            --cluster $CLUSTER_NAME \
-            --services $SERVICE_NAME \
-            --query 'services[0].events[0:5]' \
-            --output text
-            
-          # Get logs from the latest task
-          TASK_ID=$(aws ecs list-tasks \
-            --cluster $CLUSTER_NAME \
-            --service-name $SERVICE_NAME \
-            --query 'taskArns[0]' \
-            --output text)
-            
-          if [ "$TASK_ID" != "None" ]; then
-            echo "Latest task logs:"
-            aws logs get-log-events \
-              --log-group-name "/ecs/task-management-api-prod" \
-              --log-stream-name "api/$(basename $TASK_ID)" \
-              --limit 20
-          fi
-
-      - name: Wait for stack creation
-        run: |
-          aws cloudformation wait stack-create-complete --stack-name task-management-api || {
-            echo "Stack creation failed. Fetching stack events..."
-            aws cloudformation describe-stack-events --stack-name task-management-api
-            exit 1
-          } 
-
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          
-      - name: Install dependencies
-        run: |
-          npm install
-          npm install --save-dev @types/node @types/express @types/cors @types/jest @types/supertest
-          npm install express cors typeorm dotenv
-          
-      - name: Build
-        run: npm run build 
+          aws cloudformation describe-stacks \
+            --stack-name task-management-api \
+            --query 'Stacks[0].StackStatus' \
+            --output text 
