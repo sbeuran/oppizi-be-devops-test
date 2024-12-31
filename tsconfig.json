@@ -1,22 +1,18 @@
 {
   "compilerOptions": {
-    "target": "ES2018",
+    "target": "es6",
     "module": "commonjs",
-    "lib": ["es2018", "esnext.asynciterable"],
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "moduleResolution": "node",
-    "rootDir": "./src",
+    "lib": ["es6", "dom"],
     "outDir": "./dist",
-    "esModuleInterop": true,
+    "rootDir": "./src",
     "strict": true,
-    "strictPropertyInitialization": false,
+    "esModuleInterop": true,
     "skipLibCheck": true,
-    "sourceMap": true,
-    "baseUrl": "./src",
-    "paths": {
-      "@/*": ["./*"]
-    }
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "resolveJsonModule": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
