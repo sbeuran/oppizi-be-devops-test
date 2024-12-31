@@ -8,7 +8,7 @@ export class CategoryService {
 
   async createCategory(data: CreateCategoryDTO): Promise<Category> {
     if (!data.name?.trim()) {
-      throw new AppError('Name is required', 400);
+      throw new AppError('Name is required', 400, 'NAME_REQUIRED');
     }
 
     const normalizedName = data.name.trim();
@@ -19,7 +19,7 @@ export class CategoryService {
       });
 
       if (existingCategory) {
-        throw new AppError('Category with this name already exists', 400);
+        throw new AppError('Category with this name already exists', 400, 'CATEGORY_EXISTS');
       }
 
       const category = this.categoryRepository.create({ name: normalizedName });
@@ -27,7 +27,7 @@ export class CategoryService {
       return this.getCategoryById(category.id);
     } catch (error) {
       if (error instanceof AppError) throw error;
-      throw new AppError('Error creating category', 500);
+      throw new AppError('Error creating category', 500, 'CREATE_CATEGORY_ERROR');
     }
   }
 
@@ -38,7 +38,7 @@ export class CategoryService {
         order: { createdAt: 'DESC' }
       });
     } catch (error) {
-      throw new AppError('Error fetching categories', 500);
+      throw new AppError('Error fetching categories', 500, 'FETCH_CATEGORIES_ERROR');
     }
   }
 
@@ -50,19 +50,19 @@ export class CategoryService {
       });
 
       if (!category) {
-        throw new AppError('Category not found', 404);
+        throw new AppError('Category not found', 404, 'CATEGORY_NOT_FOUND');
       }
 
       return category;
     } catch (error) {
       if (error instanceof AppError) throw error;
-      throw new AppError('Error fetching category', 500);
+      throw new AppError('Error fetching category', 500, 'FETCH_CATEGORY_ERROR');
     }
   }
 
   async updateCategory(id: string, data: UpdateCategoryDTO): Promise<Category> {
     if (data.name !== undefined && !data.name.trim()) {
-      throw new AppError('Name cannot be empty', 400);
+      throw new AppError('Name cannot be empty', 400, 'NAME_EMPTY');
     }
 
     const category = await this.getCategoryById(id);
@@ -79,7 +79,7 @@ export class CategoryService {
       });
 
       if (existingCategory && existingCategory.id !== id) {
-        throw new AppError('Category with this name already exists', 400);
+        throw new AppError('Category with this name already exists', 400, 'CATEGORY_EXISTS');
       }
 
       category.name = normalizedName;
@@ -87,7 +87,7 @@ export class CategoryService {
       return this.getCategoryById(id);
     } catch (error) {
       if (error instanceof AppError) throw error;
-      throw new AppError('Error updating category', 500);
+      throw new AppError('Error updating category', 500, 'UPDATE_CATEGORY_ERROR');
     }
   }
 
@@ -96,7 +96,7 @@ export class CategoryService {
     try {
       await this.categoryRepository.remove(category);
     } catch (error) {
-      throw new AppError('Error deleting category', 500);
+      throw new AppError('Error deleting category', 500, 'DELETE_CATEGORY_ERROR');
     }
   }
 } 

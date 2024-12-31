@@ -3,9 +3,9 @@ import { QueryFailedError, EntityNotFoundError } from 'typeorm';
 
 export class AppError extends Error {
   constructor(
-    public statusCode: number,
     message: string,
-    public code: string
+    public statusCode: number,
+    public errorCode: string
   ) {
     super(message);
     this.name = 'AppError';
@@ -24,7 +24,7 @@ export const errorHandler = (
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({
       status: 'error',
-      code: err.code,
+      code: err.errorCode,
       message: err.message
     });
   }

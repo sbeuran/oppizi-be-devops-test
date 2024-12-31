@@ -2,18 +2,20 @@ import { Repository } from 'typeorm';
 import { Task } from '../entities/Task';
 import { CreateTaskDTO, UpdateTaskDTO, TaskStatus } from '../types/task.dto';
 import { AppError } from '../middlewares/errorHandler';
+import { DeepPartial } from 'typeorm';
+import { Category } from '../entities/Category';
 
 export class TaskService {
   constructor(private taskRepository: Repository<Task>) {}
 
   async createTask(data: CreateTaskDTO): Promise<Task> {
     if (!data.title?.trim()) {
-      throw new AppError('Title is required', 400);
+      throw new AppError('Title is required', 400, 'TITLE_REQUIRED');
     }
 
     try {
       if (data.status && !['todo', 'in_progress', 'done'].includes(data.status)) {
-        throw new AppError('Invalid status value', 400);
+        throw new AppError('Invalid status value', 400, 'INVALID_STATUS');
       }
 
       const task = this.taskRepository.create({
@@ -21,14 +23,14 @@ export class TaskService {
         description: data.description?.trim(),
         dueDate: data.dueDate,
         status: data.status || 'todo',
-        category: data.categoryId ? { id: data.categoryId } : null
-      });
+        category: data.categoryId ? { id: data.categoryId } as DeepPartial<Category> : null
+      } as DeepPartial<Task>);
 
-      await this.taskRepository.save(task);
-      return this.getTaskById(task.id);
+      const savedTask = await this.taskRepository.save(task);
+      return this.getTaskById(savedTask.id);
     } catch (error) {
       if (error instanceof AppError) throw error;
-      throw new AppError('Error creating task', 500);
+      throw new AppError('Error creating task', 500, 'CREATE_TASK_ERROR');
     }
   }
 
@@ -39,7 +41,7 @@ export class TaskService {
         order: { createdAt: 'DESC' }
       });
     } catch (error) {
-      throw new AppError('Error fetching tasks', 500);
+      throw new AppError('Error fetching tasks', 500, 'FETCH_TASKS_ERROR');
     }
   }
 
@@ -51,13 +53,13 @@ export class TaskService {
       });
 
       if (!task) {
-        throw new AppError('Task not found', 404);
+        throw new AppError('Task not found', 404, 'TASK_NOT_FOUND');
       }
 
       return task;
     } catch (error) {
       if (error instanceof AppError) throw error;
-      throw new AppError('Error fetching task', 500);
+      throw new AppError('Error fetching task', 500, 'FETCH_TASK_ERROR');
     }
   }
 
@@ -65,11 +67,11 @@ export class TaskService {
     const task = await this.getTaskById(id);
 
     if (data.title !== undefined && !data.title.trim()) {
-      throw new AppError('Title cannot be empty', 400);
+      throw new AppError('Title cannot be empty', 400, 'TITLE_EMPTY');
     }
 
     if (data.status && !['todo', 'in_progress', 'done'].includes(data.status)) {
-      throw new AppError('Invalid status value', 400);
+      throw new AppError('Invalid status value', 400, 'INVALID_STATUS');
     }
 
     try {
@@ -80,14 +82,14 @@ export class TaskService {
         dueDate: data.dueDate ?? task.dueDate,
         status: data.status ?? task.status,
         category: data.categoryId === null ? null : 
-                 data.categoryId ? { id: data.categoryId } : 
+                 data.categoryId ? { id: data.categoryId } as DeepPartial<Category> : 
                  task.category
-      };
+      } as DeepPartial<Task>;
 
-      await this.taskRepository.save(updateData);
-      return this.getTaskById(id);
+      const updatedTask = await this.taskRepository.save(updateData);
+      return this.getTaskById(updatedTask.id);
     } catch (error) {
-      throw new AppError('Error updating task', 500);
+      throw new AppError('Error updating task', 500, 'UPDATE_TASK_ERROR');
     }
   }
 
@@ -96,7 +98,7 @@ export class TaskService {
     try {
       await this.taskRepository.remove(task);
     } catch (error) {
-      throw new AppError('Error deleting task', 500);
+      throw new AppError('Error deleting task', 500, 'DELETE_TASK_ERROR');
     }
   }
 } 
