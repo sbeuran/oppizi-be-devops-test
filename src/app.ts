@@ -49,31 +49,33 @@ initializeDB().catch(error => {
 });
 
 // Health check route
-const healthCheck: RequestHandler = (req: Request, res: Response) => {
+const healthCheck: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
   try {
     const isConnected = AppDataSource.isInitialized;
     if (!isConnected) {
-      return res.status(500).json({ 
+      res.status(500).json({ 
         status: 'error',
         message: 'Database connection not initialized'
       });
+      return;
     }
-    return res.status(200).json({ 
+    res.status(200).json({ 
       status: 'ok',
       database: 'connected'
     });
   } catch (error) {
     console.error('Health check failed:', error);
     if (error instanceof Error) {
-      return res.status(500).json({ 
+      res.status(500).json({ 
         status: 'error',
         message: error.message 
       });
+    } else {
+      res.status(500).json({ 
+        status: 'error',
+        message: 'An unknown error occurred' 
+      });
     }
-    return res.status(500).json({ 
-      status: 'error',
-      message: 'An unknown error occurred' 
-    });
   }
 };
 
