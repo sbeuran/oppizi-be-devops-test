@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 import { QueryFailedError, EntityNotFoundError } from 'typeorm';
 
 export class AppError extends Error {
@@ -13,7 +13,7 @@ export class AppError extends Error {
   }
 }
 
-export const errorHandler = (
+export const errorHandler: ErrorRequestHandler = (
   err: Error,
   _req: Request,
   res: Response,
