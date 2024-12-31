@@ -1,17 +1,19 @@
 import { Router } from 'express';
 import { CategoryController } from '../controllers/CategoryController';
 import { CategoryService } from '../services/CategoryService';
-import { getRepository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { Category } from '../entities/Category';
 
-const router = Router();
-const categoryService = new CategoryService(getRepository(Category));
-const categoryController = new CategoryController(categoryService);
+export const createCategoryRouter = (dataSource: DataSource): Router => {
+  const router = Router();
+  const categoryService = new CategoryService(dataSource.getRepository(Category));
+  const categoryController = new CategoryController(categoryService);
 
-router.post('/', categoryController.createCategory);
-router.get('/', categoryController.getAllCategories);
-router.get('/:id', categoryController.getCategoryById);
-router.patch('/:id', categoryController.updateCategory);
-router.delete('/:id', categoryController.deleteCategory);
+  router.post('/', categoryController.createCategory.bind(categoryController));
+  router.get('/', categoryController.getAllCategories.bind(categoryController));
+  router.get('/:id', categoryController.getCategoryById.bind(categoryController));
+  router.patch('/:id', categoryController.updateCategory.bind(categoryController));
+  router.delete('/:id', categoryController.deleteCategory.bind(categoryController));
 
-export const categoryRouter = router; 
+  return router;
+}; 

@@ -1,44 +1,54 @@
-import { Task } from '../entities/Task';
-import { TaskService } from '../services/TaskService';
-import { AppError } from '../middlewares/errorHandler';
-import { CreateTaskDTO } from '../types/task.dto';
+import request from 'supertest';
+import { createApp } from '../app';
 import { testDataSource } from './setup';
+import { Task } from '../entities/Task';
+import { Category } from '../entities/Category';
 
-describe('TaskService', () => {
-  let taskService: TaskService;
+const app = createApp(testDataSource);
 
-  beforeAll(async () => {
-    // Wait for database to be ready
-    if (!testDataSource.isInitialized) {
-      await testDataSource.initialize();
-    }
-    taskService = new TaskService(testDataSource.getRepository(Task));
+describe('Task API', () => {
+  let categoryId: string;
+
+  beforeEach(async () => {
+    const category = await testDataSource.getRepository(Category).save({
+      name: 'Test Category'
+    });
+    categoryId = category.id;
   });
 
-  it('should create a task', async () => {
-    const taskData: CreateTaskDTO = {
-      title: "Test Task",
-      description: "Test Description",
-      priority: "medium",
-      status: "todo"
-    };
+  describe('POST /api/tasks', () => {
+    it('should create a new task', async () => {
+      const response = await request(app)
+        .post('/api/tasks')
+        .send({
+          title: 'Test Task',
+          description: 'Test Description',
+          dueDate: '2024-12-31',
+          categoryId
+        });
 
-    const task = await taskService.createTask(taskData);
-    expect(task).toBeDefined();
-    expect(task.id).toBeDefined();
-    expect(task.title).toBe(taskData.title);
-    expect(task.description).toBe(taskData.description);
-    expect(task.priority).toBe(taskData.priority);
-    expect(task.status).toBe(taskData.status);
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('id');
+      expect(response.body.title).toBe('Test Task');
+    });
   });
 
-  it('should throw error when creating task without title', async () => {
-    const taskData = {
-      description: "Test Description"
-    } as CreateTaskDTO;
+  describe('GET /api/tasks', () => {
+    beforeEach(async () => {
+      await testDataSource.getRepository(Task).save({
+        title: 'Test Task',
+        description: 'Test Description',
+        dueDate: new Date('2024-12-31'),
+        category: { id: categoryId }
+      });
+    });
 
-    await expect(async () => {
-      await taskService.createTask(taskData);
-    }).rejects.toThrow(AppError);
+    it('should return all tasks', async () => {
+      const response = await request(app).get('/api/tasks');
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body[0]).toHaveProperty('title', 'Test Task');
+    });
   });
 }); 

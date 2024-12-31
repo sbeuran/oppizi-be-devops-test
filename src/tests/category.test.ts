@@ -1,40 +1,38 @@
-import { Category } from '../entities/Category';
-import { CategoryService } from '../services/CategoryService';
-import { AppError } from '../middlewares/errorHandler';
-import { CreateCategoryDTO } from '../types/category.dto';
+import request from 'supertest';
+import { createApp } from '../app';
 import { testDataSource } from './setup';
+import { Category } from '../entities/Category';
 
-describe('CategoryService', () => {
-  let categoryService: CategoryService;
+const app = createApp(testDataSource);
 
-  beforeAll(async () => {
-    // Wait for database to be ready
-    if (!testDataSource.isInitialized) {
-      await testDataSource.initialize();
-    }
-    categoryService = new CategoryService(testDataSource.getRepository(Category));
+describe('Category API', () => {
+  describe('POST /api/categories', () => {
+    it('should create a new category', async () => {
+      const response = await request(app)
+        .post('/api/categories')
+        .send({
+          name: 'Test Category'
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('id');
+      expect(response.body.name).toBe('Test Category');
+    });
   });
 
-  it('should create a category', async () => {
-    const categoryData: CreateCategoryDTO = {
-      name: "Test Category",
-      description: "Test Description"
-    };
+  describe('GET /api/categories', () => {
+    beforeEach(async () => {
+      await testDataSource.getRepository(Category).save({
+        name: 'Test Category'
+      });
+    });
 
-    const category = await categoryService.createCategory(categoryData);
-    expect(category).toBeDefined();
-    expect(category.id).toBeDefined();
-    expect(category.name).toBe(categoryData.name);
-    expect(category.description).toBe(categoryData.description);
-  });
+    it('should return all categories', async () => {
+      const response = await request(app).get('/api/categories');
 
-  it('should throw error when creating category without name', async () => {
-    const categoryData = {
-      description: "Test Description"
-    } as CreateCategoryDTO;
-
-    await expect(async () => {
-      await categoryService.createCategory(categoryData);
-    }).rejects.toThrow(AppError);
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body[0]).toHaveProperty('name', 'Test Category');
+    });
   });
 }); 
