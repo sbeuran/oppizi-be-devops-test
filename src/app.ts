@@ -24,36 +24,19 @@ export const AppDataSource = new DataSource({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Initialize database connection with retries
-const initializeDB = async (retries = 5, delay = 5000) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      await AppDataSource.initialize();
-      console.log("Database connection initialized");
-      
-      // Set up routes after database is initialized
-      app.use('/api/tasks', getTaskRouter(AppDataSource));
-      app.use('/api/categories', getCategoryRouter(AppDataSource));
-      
-      return;
-    } catch (error) {
-      console.error(`Database connection attempt ${i + 1} failed:`, error);
-      if (i < retries - 1) {
-        console.log(`Retrying in ${delay/1000} seconds...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
+// Initialize database and set up routes
+export const initializeApp = async () => {
+  if (!AppDataSource.isInitialized) {
+    await AppDataSource.initialize();
+    console.log("Database connection initialized");
   }
-  throw new Error("Failed to initialize database connection after multiple attempts");
+  
+  // Set up API routes
+  app.use('/api/tasks', getTaskRouter(AppDataSource));
+  app.use('/api/categories', getCategoryRouter(AppDataSource));
+  
+  return app;
 };
-
-// Only initialize AppDataSource if not in test environment
-if (process.env.NODE_ENV !== 'test') {
-  initializeDB().catch(error => {
-    console.error("Fatal error initializing database:", error);
-    process.exit(1);
-  });
-}
 
 // Health check route
 const healthCheck: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {

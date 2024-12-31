@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { DataSource } from 'typeorm';
-import app from '../app';
+import app, { initializeApp } from '../app';
 import { Category } from '../entities/Category';
 import { testDataSource, initializeTestDB } from './test-db';
 
@@ -9,6 +9,7 @@ describe('Category API', () => {
 
   beforeAll(async () => {
     dataSource = await initializeTestDB();
+    await initializeApp();
   });
 
   afterAll(async () => {

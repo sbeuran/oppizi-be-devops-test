@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { DataSource } from 'typeorm';
-import app from '../app';
+import app, { initializeApp } from '../app';
 import { Task } from '../entities/Task';
 import { Category } from '../entities/Category';
 import { testDataSource, initializeTestDB } from './test-db';
@@ -11,6 +11,7 @@ describe('Task API', () => {
 
   beforeAll(async () => {
     dataSource = await initializeTestDB();
+    await initializeApp(); // Initialize routes
   });
 
   afterAll(async () => {
