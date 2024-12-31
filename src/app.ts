@@ -6,7 +6,10 @@ import { Task } from './entities/Task';
 import { getTaskRouter } from './routes/task.routes';
 import { getCategoryRouter } from './routes/category.routes';
 
+// Create express app
 const app = express();
+
+// Apply middleware
 app.use(cors());
 app.use(express.json());
 
@@ -24,22 +27,31 @@ export const AppDataSource = new DataSource({
   ssl: false
 });
 
+let isInitialized = false;
+
 // Initialize database and routes
 export const initializeApp = async () => {
+  if (isInitialized) {
+    return app;
+  }
+
   try {
     if (!AppDataSource.isInitialized) {
       await AppDataSource.initialize();
       console.log("Database connection initialized");
     }
 
-    // Set up API routes
+    // Create routers
     const taskRouter = getTaskRouter(AppDataSource);
     const categoryRouter = getCategoryRouter(AppDataSource);
 
+    // Mount routes
     app.use('/api/tasks', taskRouter);
     app.use('/api/categories', categoryRouter);
 
+    isInitialized = true;
     console.log("Routes initialized");
+
     return app;
   } catch (error) {
     console.error('Failed to initialize app:', error);
