@@ -29,7 +29,6 @@ describe('Category API', () => {
 
     it('should return all categories', async () => {
       const response = await request(app).get('/api/categories');
-
       expect(response.status).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body[0]).toHaveProperty('name', 'Test Category');
