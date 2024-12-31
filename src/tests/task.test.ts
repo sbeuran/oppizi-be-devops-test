@@ -11,7 +11,7 @@ describe('Task API', () => {
 
   beforeAll(async () => {
     dataSource = await initializeTestDB();
-    await initializeApp(); // Initialize routes
+    await initializeApp(); // Make sure this completes before tests run
   });
 
   afterAll(async () => {

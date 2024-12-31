@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction, RequestHandler } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { DataSource } from 'typeorm';
 import { Category } from './entities/Category';
@@ -24,16 +24,23 @@ export const AppDataSource = new DataSource({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Set up routes immediately
-app.use('/api/tasks', getTaskRouter(AppDataSource));
-app.use('/api/categories', getCategoryRouter(AppDataSource));
+let routesInitialized = false;
 
-// Initialize database
+// Initialize database and routes
 export const initializeApp = async () => {
   if (!AppDataSource.isInitialized) {
     await AppDataSource.initialize();
     console.log("Database connection initialized");
   }
+
+  if (!routesInitialized) {
+    // Set up API routes after database is initialized
+    app.use('/api/tasks', getTaskRouter(AppDataSource));
+    app.use('/api/categories', getCategoryRouter(AppDataSource));
+    routesInitialized = true;
+    console.log("Routes initialized");
+  }
+
   return app;
 };
 
