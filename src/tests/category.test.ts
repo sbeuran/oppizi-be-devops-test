@@ -2,22 +2,22 @@ import request from 'supertest';
 import { DataSource } from 'typeorm';
 import app from '../app';
 import { Category } from '../entities/Category';
-import { testDataSource } from './test-db';
+import { testDataSource, initializeTestDB } from './test-db';
 
 describe('Category API', () => {
   let dataSource: DataSource;
 
   beforeAll(async () => {
-    dataSource = testDataSource;
-    await dataSource.initialize();
+    dataSource = await initializeTestDB();
   });
 
   afterAll(async () => {
-    await dataSource.destroy();
+    if (dataSource?.isInitialized) {
+      await dataSource.destroy();
+    }
   });
 
   beforeEach(async () => {
-    // Clear the database before each test
     await dataSource.synchronize(true);
   });
 

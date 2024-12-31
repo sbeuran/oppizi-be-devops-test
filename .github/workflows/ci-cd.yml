@@ -58,7 +58,11 @@ jobs:
         run: npm ci
         
       - name: Run tests
-        run: npm test
+        run: |
+          # Wait for PostgreSQL to be ready
+          sleep 5
+          # Run tests
+          npm test
         env:
           DB_HOST: localhost
           DB_PORT: 5432
